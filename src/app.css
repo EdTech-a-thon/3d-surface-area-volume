@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans:
+    "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+
+  --color-ink: #10202b;
+  --color-ink-soft: #46606f;
+  --color-paper: #f4f2ea;
+  --color-panel: #ffffff;
+  --color-rule: #d7d3c6;
+  --color-accent: #0d5c63;
+  --color-accent-soft: #e2efef;
+  --color-flag: #c2410c;
+  --color-flag-soft: #fdead7;
+}
+
+html {
+  background: var(--color-paper);
+}
+
+body {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Projector-friendly focus ring: thick and high contrast in every panel. */
+:focus-visible {
+  outline: 3px solid var(--color-flag);
+  outline-offset: 2px;
+}
+
+/* Keeps labels readable wherever they land on a shape. The halo width is set
+   per view, because the two SVGs use very different user-unit scales. */
+.label-halo {
+  paint-order: stroke fill;
+  stroke: #ffffff;
+  stroke-linejoin: round;
+}

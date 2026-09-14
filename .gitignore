@@ -1,7 +1,10 @@
 node_modules
 out
 dist
+build
 .svelte-kit/
+test-results
+playwright-report
 *.local
 
 # dotenv environment variable files

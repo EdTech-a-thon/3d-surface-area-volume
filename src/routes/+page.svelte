@@ -1,0 +1,112 @@
+<script lang="ts">
+  import MeasureBar from "$lib/components/MeasureBar.svelte";
+  import NetView from "$lib/components/NetView.svelte";
+  import RotationControls from "$lib/components/RotationControls.svelte";
+  import ShapeBar from "$lib/components/ShapeBar.svelte";
+  import SolidView from "$lib/components/SolidView.svelte";
+  import TotalsCard from "$lib/components/TotalsCard.svelte";
+  import ViewToggle from "$lib/components/ViewToggle.svelte";
+  import { UNITS, UNIT_ORDER } from "$lib/domain/format";
+  import type { UnitKey } from "$lib/domain/format";
+  import { LabState } from "$lib/state/lab.svelte";
+
+  const lab = new LabState();
+
+  let reducedMotion = $state(false);
+
+  $effect(() => {
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => {
+      reducedMotion = motion.matches;
+      if (reducedMotion) lab.autoRotate = false;
+    };
+    apply();
+    motion.addEventListener("change", apply);
+    return () => motion.removeEventListener("change", apply);
+  });
+</script>
+
+<!-- The shape owns the screen. Everything else is a small panel floating over
+     it at a corner, so nothing competes with the solid for attention. -->
+<div
+  class="relative h-[100dvh] w-full overflow-hidden bg-gradient-to-b from-paper to-accent-soft/50"
+>
+  <h1 class="sr-only">Shape Lab</h1>
+
+  <div class="absolute inset-0">
+    {#if lab.view === "net" && lab.net}
+      <NetView {lab} net={lab.net} />
+    {:else}
+      <SolidView {lab} {reducedMotion} />
+    {/if}
+  </div>
+
+  <p class="sr-only" aria-live="polite" data-testid="answer-state">
+    {lab.answersVisible
+      ? "Final answers are visible."
+      : "Final answers are hidden."}
+  </p>
+
+  <!-- Top left: which solid. Three icons to a row on a phone, where the view
+       controls opposite need the rest of the width; one row on a big screen. -->
+  <div
+    class="pointer-events-none absolute top-2 left-2 z-20 max-w-[9.5rem] sm:max-w-[17.5rem]"
+  >
+    <ShapeBar {lab} />
+  </div>
+
+  <!-- Top right: which view, and what the numbers are called. -->
+  <div
+    class="pointer-events-none absolute top-2 right-2 z-20 flex flex-wrap justify-end gap-1.5"
+  >
+    <ViewToggle {lab} />
+    <label class="sr-only" for="unit-select">Units</label>
+    <select
+      id="unit-select"
+      data-testid="unit-select"
+      class="pointer-events-auto cursor-pointer rounded-xl border border-rule/70 bg-panel/85 px-2 py-1 text-xs font-bold shadow-lg shadow-ink/10 backdrop-blur-md"
+      value={lab.unit}
+      onchange={(event) => (lab.unit = event.currentTarget.value as UnitKey)}
+    >
+      {#each UNIT_ORDER as key (key)}
+        <option value={key}>{UNITS[key].linear}</option>
+      {/each}
+    </select>
+  </div>
+
+  <!-- Centred notes: only ever one line, and only when there is something to say. -->
+  <div
+    class="pointer-events-none absolute inset-x-0 top-2 z-10 flex flex-col items-center gap-1.5 px-28"
+  >
+    {#if !lab.definition.hasNet}
+      <p
+        id="no-net-reason"
+        data-testid="no-net-reason"
+        class="max-w-md rounded-lg border border-rule/70 bg-panel/90 px-3 py-1.5 text-center text-xs shadow-lg shadow-ink/10 backdrop-blur-md"
+      >
+        A sphere has <strong>no flat net</strong>: its surface cannot be
+        flattened without stretching, which is why world maps distort countries.
+      </p>
+    {/if}
+    {#if lab.view === "net" && lab.net?.note}
+      <p
+        data-testid="net-note"
+        class="max-w-xl rounded-lg border border-rule/70 bg-panel/90 px-3 py-1.5 text-center text-xs text-ink-soft shadow-lg shadow-ink/10 backdrop-blur-md"
+      >
+        {lab.net.note}
+      </p>
+    {/if}
+  </div>
+
+  <!-- Bottom: the dimensions on the left, the answers on the right, and the
+       view controls between them. They wrap into rows on a narrow screen. -->
+  <div
+    class="pointer-events-none absolute inset-x-2 bottom-2 z-20 flex flex-wrap items-end justify-between gap-2"
+  >
+    <MeasureBar {lab} />
+    <div class="order-last flex flex-1 justify-center sm:order-none">
+      <RotationControls {lab} {reducedMotion} />
+    </div>
+    <TotalsCard {lab} />
+  </div>
+</div>
