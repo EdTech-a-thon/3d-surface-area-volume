@@ -1,5 +1,6 @@
 <script lang="ts">
   import Approximation from "$lib/components/Approximation.svelte";
+  import MathText from "$lib/components/MathText.svelte";
   import { evalExact, formatExact } from "$lib/domain/exact";
   import { UNITS } from "$lib/domain/format";
   import type { Calculation } from "$lib/domain/types";
@@ -35,7 +36,7 @@
         class="font-mono text-xl leading-tight font-bold"
         data-testid={testid}
       >
-        {formatExact(calculation.exact)}
+        <MathText text={formatExact(calculation.exact)} />
         <span class="text-xs font-normal text-ink-soft">{unitLabel}</span>
         <Approximation
           {value}
@@ -55,10 +56,10 @@
   {#if lab.showFormulas}
     <p class="mt-0.5 mb-1 ml-8 font-mono text-xs text-ink-soft">
       <span class="block" data-testid="{testid.split('-')[0]}-formula">
-        {calculation.formula}
+        <MathText text={calculation.formula} />
       </span>
       <span class="block" data-testid="{testid.split('-')[0]}-substitution">
-        {calculation.substitution}
+        <MathText text={calculation.substitution} />
       </span>
     </p>
   {/if}

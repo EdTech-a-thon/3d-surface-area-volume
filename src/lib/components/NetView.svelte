@@ -1,11 +1,16 @@
 <script lang="ts">
+  import { UNITS } from "$lib/domain/format";
   import { sectorPath, type Net } from "$lib/domain/nets";
+  import { DIMENSION_MAX } from "$lib/domain/types";
   import {
     surfaceTarget,
     type LabState,
     type Target,
   } from "$lib/state/lab.svelte";
   import { HATCH_PATTERN_ID, netFill, netStroke } from "$lib/ui/colors";
+  import { fitFraction, gridScale } from "$lib/ui/grid";
+  import { splitMath } from "$lib/ui/mathText";
+  import ScaleKey from "$lib/components/ScaleKey.svelte";
 
   let { lab, net }: { lab: LabState; net: Net } = $props();
 
@@ -16,6 +21,12 @@
   let boxWidth = $state(900);
   let boxHeight = $state(650);
 
+  /**
+   * Half the width of the largest net the sliders reach: a cube of edge 20 lays
+   * out four faces across, so its net is 80 units wide.
+   */
+  const FULL_EXTENT = DIMENSION_MAX * 2;
+
   const layout = $derived.by(() => {
     const width = net.bounds.maxX - net.bounds.minX || 1;
     const height = net.bounds.maxY - net.bounds.minY || 1;
@@ -23,22 +34,36 @@
     const wanted = { w: width + pad * 2, h: height + pad * 2 };
 
     const aspect = Math.max(boxWidth, 1) / Math.max(boxHeight, 1);
-    const view =
+    const fitted =
       wanted.w / wanted.h < aspect
         ? { w: wanted.h * aspect, h: wanted.h }
         : { w: wanted.w, h: wanted.w / aspect };
+    // A small net is drawn small, exactly as a small solid is: widening the
+    // viewBox past the net leaves it the same share of the screen its solid had.
+    const zoom = fitFraction(Math.max(width, height) / 2, FULL_EXTENT);
+    const view = { w: fitted.w / zoom, h: fitted.h / zoom };
 
     const centerX = (net.bounds.minX + net.bounds.maxX) / 2;
     const centerY = (net.bounds.minY + net.bounds.maxY) / 2;
     // Length of one CSS pixel, in the net's own units.
     const pixel = view.w / Math.max(boxWidth, 1);
     return {
-      viewBox: `${centerX - view.w / 2} ${centerY - view.h / 2} ${view.w} ${view.h}`,
+      box: {
+        x: centerX - view.w / 2,
+        y: centerY - view.h / 2,
+        w: view.w,
+        h: view.h,
+      },
       pixel,
     };
   });
 
-  const viewBox = $derived(layout.viewBox);
+  const box = $derived(layout.box);
+  const viewBox = $derived(`${box.x} ${box.y} ${box.w} ${box.h}`);
+  /** The net is fitted to the screen too, so it carries the same measured grid. */
+  const grid = $derived(gridScale(1 / layout.pixel));
+  const linear = $derived(UNITS[lab.unit].linear);
+  const GRID_PATTERN_ID = "net-measured-grid";
   const codeSize = $derived(layout.pixel * 20);
   const sizeTextSize = $derived(layout.pixel * 13);
   const strokeWidth = $derived(layout.pixel * 1.5);
@@ -67,7 +92,7 @@
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
-  class="h-full w-full"
+  class="relative h-full w-full"
   bind:clientWidth={boxWidth}
   bind:clientHeight={boxHeight}
 >
@@ -85,6 +110,22 @@
     }}
   >
     <defs>
+      <!-- Dots a round number of units apart, in the net's own units, so the
+           pieces spread over more of them as the solid grows. -->
+      <pattern
+        id={GRID_PATTERN_ID}
+        width={grid.step}
+        height={grid.step}
+        patternUnits="userSpaceOnUse"
+        patternTransform="translate({-grid.step / 2} {-grid.step / 2})"
+      >
+        <circle
+          cx={grid.step / 2}
+          cy={grid.step / 2}
+          r={layout.pixel * 1.6}
+          fill="#46606f"
+        />
+      </pattern>
       <pattern
         id="net-{HATCH_PATTERN_ID}"
         width="14"
@@ -103,6 +144,16 @@
         />
       </pattern>
     </defs>
+
+    <rect
+      x={box.x}
+      y={box.y}
+      width={box.w}
+      height={box.h}
+      fill="url(#{GRID_PATTERN_ID})"
+      opacity="0.35"
+      pointer-events="none"
+    />
 
     {#each net.pieces as piece (piece.surfaceId)}
       {@const active = lab.isActive(surfaceTarget(piece.surfaceId))}
@@ -178,9 +229,14 @@
           text-anchor="middle"
           dominant-baseline="central"
           fill="#334155"
-          pointer-events="none">{piece.sizeText}</text
+          pointer-events="none"
+          >{#each splitMath(piece.sizeText) as segment, index (index)}{#if segment.kind === "radical"}√<tspan
+                text-decoration="overline">{segment.radicand}</tspan
+              >{:else}{segment.text}{/if}{/each}</text
         >
       </g>
     {/each}
   </svg>
+
+  <ScaleKey {grid} {linear} />
 </div>

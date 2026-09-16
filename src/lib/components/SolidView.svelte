@@ -1,4 +1,6 @@
 <script lang="ts">
+  import MathText from "$lib/components/MathText.svelte";
+  import ScaleKey from "$lib/components/ScaleKey.svelte";
   import { evalExact, formatExact } from "$lib/domain/exact";
   import {
     UNITS,
@@ -13,6 +15,7 @@
     type MeasuredEdge,
     type Vec3,
   } from "$lib/domain/geometry3d";
+  import { DIMENSION_MAX } from "$lib/domain/types";
   import {
     measureTarget,
     surfaceTarget,
@@ -20,6 +23,7 @@
     type Target,
   } from "$lib/state/lab.svelte";
   import { HATCH_PATTERN_ID, chipTint, facetFill } from "$lib/ui/colors";
+  import { fitFraction, gridScale } from "$lib/ui/grid";
 
   let {
     lab,
@@ -35,9 +39,23 @@
   let boxHeight = $state(650);
   const halfWidth = $derived(Math.max(boxWidth, 1) / 2);
   const halfHeight = $derived(Math.max(boxHeight, 1) / 2);
+  /** The extent of the largest solid the sliders reach: a sphere of radius 20. */
+  const FULL_EXTENT = DIMENSION_MAX;
   const scale = $derived(
-    (Math.min(halfWidth, halfHeight) * 0.78) / lab.mesh.extent,
+    (Math.min(halfWidth, halfHeight) *
+      0.78 *
+      fitFraction(lab.mesh.extent, FULL_EXTENT)) /
+      lab.mesh.extent,
   );
+
+  /**
+   * The drawing is always fitted to the screen, so growing a cube would change
+   * nothing on its own. The measured dot grid behind it is what shows the size:
+   * its dots are a fixed number of units apart, so the solid covers more of
+   * them as it grows.
+   */
+  const GRID_PATTERN_ID = "measured-grid";
+  const grid = $derived(gridScale(scale));
 
   const linear = $derived(UNITS[lab.unit].linear);
   const areaUnit = $derived(UNITS[lab.unit].area);
@@ -410,6 +428,18 @@
     onkeydown={onKeyDown}
   >
     <defs>
+      <!-- Anchored half a tile back so a dot lands on the origin, which is the
+           centre of the solid: the shape then grows symmetrically across the
+           lattice instead of drifting over it. -->
+      <pattern
+        id={GRID_PATTERN_ID}
+        width={grid.gap}
+        height={grid.gap}
+        patternUnits="userSpaceOnUse"
+        patternTransform="translate({-grid.gap / 2} {-grid.gap / 2})"
+      >
+        <circle cx={grid.gap / 2} cy={grid.gap / 2} r="1.6" fill="#46606f" />
+      </pattern>
       <pattern
         id={HATCH_PATTERN_ID}
         width="14"
@@ -428,6 +458,16 @@
         />
       </pattern>
     </defs>
+
+    <rect
+      x={-halfWidth}
+      y={-halfHeight}
+      width={halfWidth * 2}
+      height={halfHeight * 2}
+      fill="url(#{GRID_PATTERN_ID})"
+      opacity="0.35"
+      pointer-events="none"
+    />
 
     {#each facets as facet, index (index)}
       <polygon
@@ -484,6 +524,8 @@
   <!-- Measurements live above the drawing as real buttons, so they can be read,
        focused and pinned without a pointer. -->
   <div class="pointer-events-none absolute inset-0 overflow-hidden">
+    <ScaleKey {grid} {linear} />
+
     {#each badges as badge (badge.surface.id)}
       <button
         type="button"
@@ -512,16 +554,16 @@
       >
         {#if badge.active}
           <span class="block font-sans font-bold"
-            >{badge.surface.code} · {badge.surface.name}{lab.showFormulas
-              ? ` · ${badge.surface.formula}`
-              : ""}</span
+            >{badge.surface.code} · {badge.surface.name}{#if lab.showFormulas}
+              · <MathText text={badge.surface.formula} />
+            {/if}</span
           >
           <span class="block" data-testid="face-value-{badge.surface.localId}">
             <!-- The working only appears while the fx toggle is on, exactly as
                  it does for the totals. -->
-            {lab.showFormulas ? `${badge.surface.substitution} =` : "="}
+            {#if lab.showFormulas}<MathText text={badge.surface.substitution} /> ={:else}={/if}
             {#if lab.answersVisible}
-              <strong>{badge.value}</strong>
+              <strong><MathText text={badge.value} /></strong>
               {areaUnit}{#if badge.approximate}
                 <span class="text-ink-soft"> {badge.approximate}</span>
               {/if}
@@ -552,9 +594,11 @@
         onclick={() => lab.togglePin(label.target)}
       >
         {#if label.working}
-          <span class="block text-ink-soft">{label.working}</span>
+          <span class="block text-ink-soft"
+            ><MathText text={label.working} /></span
+          >
         {/if}
-        <span class="block font-bold">{label.text}</span>
+        <span class="block font-bold"><MathText text={label.text} /></span>
         {#if label.approximate}
           <span class="block text-ink-soft">{label.approximate}</span>
         {/if}

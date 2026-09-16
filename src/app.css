@@ -44,3 +44,16 @@ a {
   stroke: #ffffff;
   stroke-linejoin: round;
 }
+
+/* A square root drawn the way a textbook draws it: the √ glyph followed by a
+   vinculum over the radicand, so √(3² + 4²) needs no brackets to group. The bar
+   is a border rather than an overline so its thickness scales with the text. */
+.radical {
+  white-space: nowrap;
+}
+
+.radical > .radical-over {
+  border-top: 0.075em solid currentColor;
+  margin-left: -0.03em;
+  padding: 0.12em 0.12em 0 0.08em;
+}
