@@ -3,7 +3,7 @@ import { evalExact, formatExact } from "./exact";
 import { buildEdges, buildMesh, rotatePoint } from "./geometry3d";
 import { buildNet, type NetPiece } from "./nets";
 import { SOLIDS, buildSolid } from "./solids";
-import { SOLID_ORDER, type Dimensions, type SolidKind } from "./types";
+import { SOLID_KINDS, type Dimensions, type SolidKind } from "./types";
 
 const SAMPLES: Record<SolidKind, Dimensions> = {
   rectangularPrism: { l: 3, w: 4, h: 5 },
@@ -12,6 +12,7 @@ const SAMPLES: Record<SolidKind, Dimensions> = {
   cylinder: { r: 2, h: 3 },
   cone: { r: 3, h: 4 },
   sphere: { r: 3 },
+  logoSlab: { m: 4, r: 1, b: 1.5, h: 2 },
 };
 
 function exactSurfaceArea(kind: SolidKind, dimensions: Dimensions) {
@@ -66,6 +67,16 @@ describe("acceptance examples", () => {
     expect(SOLIDS.sphere.hasNet).toBe(false);
     expect(buildNet("sphere", { r: 3 })).toBeNull();
   });
+
+  it("computes the tapered teacher.dev key exactly", () => {
+    const dimensions = { m: 4, r: 1, b: 1.5, h: 2 };
+    expect(exactSurfaceArea("logoSlab", dimensions)).toBe("128 + 16π");
+    expect(exactVolume("logoSlab", dimensions)).toBe("88 + 6.5π");
+    const slant = buildSolid("logoSlab", dimensions).derived.find(
+      (value) => value.key === "t",
+    );
+    expect(formatExact(slant!.exact)).toBe("2.5");
+  });
 });
 
 describe("exact expressions keep radicals", () => {
@@ -102,7 +113,7 @@ describe("exact expressions keep radicals", () => {
 
 describe("invariants", () => {
   it("produces finite positive areas and volumes across the input range", () => {
-    for (const kind of SOLID_ORDER) {
+    for (const kind of SOLID_KINDS) {
       for (const value of [0.1, 0.5, 1, 7.3, 20]) {
         const dimensions = Object.fromEntries(
           SOLIDS[kind].dimensions.map((spec) => [spec.key, value]),
@@ -117,7 +128,7 @@ describe("invariants", () => {
   });
 
   it("makes total surface area the sum of its surface terms, each counted once", () => {
-    for (const kind of SOLID_ORDER) {
+    for (const kind of SOLID_KINDS) {
       const model = buildSolid(kind, SAMPLES[kind]);
       const sum = model.surfaces.reduce(
         (total, surface) => total + evalExact(surface.exact),
@@ -131,7 +142,7 @@ describe("invariants", () => {
   });
 
   it("namespaces surface ids by solid kind", () => {
-    for (const kind of SOLID_ORDER) {
+    for (const kind of SOLID_KINDS) {
       const model = buildSolid(kind, SAMPLES[kind]);
       for (const surface of model.surfaces)
         expect(surface.id.startsWith(`${kind}:`)).toBe(true);
@@ -139,7 +150,7 @@ describe("invariants", () => {
   });
 
   it("multiplies surface area by 4 and volume by 8 when every dimension doubles", () => {
-    for (const kind of SOLID_ORDER) {
+    for (const kind of SOLID_KINDS) {
       const base = {
         l: 1.5,
         w: 2,
@@ -149,6 +160,9 @@ describe("invariants", () => {
         b: 2,
         p: 2.5,
         r: 1.5,
+        m: 2,
+        c: 0.5,
+        t: 1.5,
       };
       const dimensions = Object.fromEntries(
         SOLIDS[kind].dimensions.map((spec) => [
@@ -259,6 +273,32 @@ describe("nets", () => {
     }
   });
 
+  it("unrolls the logo's rounded bevel into an exact annular sector", () => {
+    const dimensions = SAMPLES.logoSlab;
+    const net = buildNet("logoSlab", dimensions)!;
+    const piece = net.pieces.find(
+      (candidate) => candidate.shape === "annularSector",
+    );
+    if (!piece || piece.shape !== "annularSector")
+      throw new Error("expected an annular sector");
+
+    const outerArc = piece.outerRadius * piece.sweepAngle;
+    const innerArc = piece.innerRadius * piece.sweepAngle;
+    expect(outerArc).toBeCloseTo(
+      2 * Math.PI * (dimensions.r + dimensions.b),
+      10,
+    );
+    expect(innerArc).toBeCloseTo(2 * Math.PI * dimensions.r, 10);
+
+    const area =
+      ((piece.outerRadius ** 2 - piece.innerRadius ** 2) * piece.sweepAngle) /
+      2;
+    const corners = buildSolid("logoSlab", dimensions).surfaces.find(
+      (surface) => surface.localId === "corners",
+    )!;
+    expect(area).toBeCloseTo(evalExact(corners.exact), 10);
+  });
+
   it("preserves every surface area in the flat nets of the developable solids", () => {
     for (const kind of [
       "rectangularPrism",
@@ -312,7 +352,7 @@ describe("nets", () => {
 
 describe("3D meshes", () => {
   it("covers every surface of every solid with outward-facing polygons", () => {
-    for (const kind of SOLID_ORDER) {
+    for (const kind of SOLID_KINDS) {
       const model = buildSolid(kind, SAMPLES[kind]);
       const mesh = buildMesh(kind, SAMPLES[kind]);
       const covered = new Set(mesh.facets.map((facet) => facet.surfaceId));
@@ -326,7 +366,7 @@ describe("3D meshes", () => {
   });
 
   it("offers a measurable line for every dimension of every solid", () => {
-    for (const kind of SOLID_ORDER) {
+    for (const kind of SOLID_KINDS) {
       const edges = buildEdges(kind, SAMPLES[kind], 0.4, 0.3);
       const measured = new Set(edges.map((edge) => edge.measure));
       for (const spec of SOLIDS[kind].dimensions) {
@@ -336,8 +376,8 @@ describe("3D meshes", () => {
   });
 
   it("measures each line at the length it claims", () => {
-    const expected: Record<string, number> = { c: 5, s: 5 };
-    for (const kind of SOLID_ORDER) {
+    const expected: Record<string, number> = { c: 5, s: 5, t: 2.5 };
+    for (const kind of SOLID_KINDS) {
       const dimensions = SAMPLES[kind];
       for (const edge of buildEdges(kind, dimensions, 0.4, 0.3)) {
         const length = Math.hypot(
@@ -349,6 +389,25 @@ describe("3D meshes", () => {
         expect(want, `${kind} knows ${edge.measure}`).toBeDefined();
         expect(length, `${kind} ${edge.measure}`).toBeCloseTo(want, 9);
       }
+    }
+  });
+
+  it("puts the key's slanted measurement on its real silhouette edge", () => {
+    const dimensions = SAMPLES.logoSlab;
+    for (const yaw of [-1.1, -0.62, 0.4, 2.2]) {
+      const edge = buildEdges("logoSlab", dimensions, yaw, 0.3).find(
+        (candidate) => candidate.measure === "t",
+      )!;
+      const right = [Math.cos(yaw), Math.sin(yaw)] as const;
+      const support = (radius: number, y: number) => [
+        Math.sign(right[0]) * (dimensions.m / 2) + radius * right[0],
+        y,
+        Math.sign(right[1]) * (dimensions.m / 2) + radius * right[1],
+      ];
+      expect(edge.a).toEqual(
+        support(dimensions.r + dimensions.b, -dimensions.h / 2),
+      );
+      expect(edge.b).toEqual(support(dimensions.r, dimensions.h / 2));
     }
   });
 

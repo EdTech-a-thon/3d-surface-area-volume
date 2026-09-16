@@ -33,8 +33,12 @@
   {:else if kind === "cone"}
     <path d="M24 7l14 26M24 7L10 33" />
     <ellipse cx="24" cy="33" rx="14" ry="5" />
-  {:else}
+  {:else if kind === "sphere"}
     <circle cx="24" cy="24" r="16" />
     <ellipse cx="24" cy="24" rx="16" ry="6" />
+  {:else}
+    <!-- The hidden logo key: a smaller top over a wider footprint. -->
+    <path d="M24 8l17 13-17 13L7 21z" />
+    <path d="M7 21v7l17 13 17-13v-7" />
   {/if}
 </svg>

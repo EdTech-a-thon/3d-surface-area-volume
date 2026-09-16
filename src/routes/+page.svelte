@@ -6,6 +6,7 @@
   import SolidView from "$lib/components/SolidView.svelte";
   import TotalsCard from "$lib/components/TotalsCard.svelte";
   import ViewToggle from "$lib/components/ViewToggle.svelte";
+  import BrandChip from "$lib/components/BrandChip.svelte";
   import { UNITS, UNIT_ORDER } from "$lib/domain/format";
   import type { UnitKey } from "$lib/domain/format";
   import { LabState } from "$lib/state/lab.svelte";
@@ -33,6 +34,10 @@
   });
 </script>
 
+<svelte:head>
+  <title>Shape Lab — surface area and volume</title>
+</svelte:head>
+
 <!-- The shape owns the screen. Everything else is a small panel floating over
      it at a corner, so nothing competes with the solid for attention. -->
 <div
@@ -55,17 +60,24 @@
       : "Final answers are hidden."}
   </p>
 
-  <!-- Top left: which solid. Three icons to a row on a phone, where the view
-       controls opposite need the rest of the width; one row on a big screen. -->
+  <!-- Top left: who made this, then which solid. The mark leads the row the way
+       a masthead leads a page, and the picker keeps the width it had: three
+       icons to a row on a phone, where the view controls opposite need the rest
+       of the width; one row on a big screen. -->
   <div
-    class="pointer-events-none absolute top-2 left-2 z-20 max-w-[9.5rem] sm:max-w-[17.5rem]"
+    class="pointer-events-none absolute top-2 left-2 z-20 flex items-start gap-1.5"
   >
-    <ShapeBar {lab} />
+    <BrandChip {lab} />
+    <div class="max-w-[9.5rem] sm:max-w-[17.5rem]">
+      <ShapeBar {lab} />
+    </div>
   </div>
 
-  <!-- Top right: which view, and what the numbers are called. -->
+  <!-- Top right: which view, and what the numbers are called. On a phone the
+       top edge is the tightest row on screen, so the unit select drops onto its
+       own line to leave the mark and the picker opposite their full width. -->
   <div
-    class="pointer-events-none absolute top-2 right-2 z-20 flex flex-wrap justify-end gap-1.5"
+    class="pointer-events-none absolute top-2 right-2 z-20 flex max-w-[7.5rem] flex-wrap justify-end gap-1.5 sm:max-w-none"
   >
     <ViewToggle {lab} />
     <label class="sr-only" for="unit-select">Units</label>

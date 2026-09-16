@@ -441,3 +441,90 @@ test("keeps rounded decimals short, with the detail a hover away", async ({
   await approx.hover();
   await expect(approx).toHaveText("≈ 62.83185", { useInnerText: true });
 });
+
+test("folds the footer into a chip that stays clear of the controls", async ({
+  page,
+}) => {
+  const toggle = page.getByTestId("brand-toggle");
+  const panel = page.getByTestId("brand-panel");
+
+  // Folded up, it is a logo and nothing else. The links stay in the document
+  // for the keyboard, so what says they are folded is the screen-reader-only
+  // box they sit in, not their absence.
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  expect((await panel.boundingBox())!.width).toBeLessThan(10);
+
+  // Pointing at it is enough; a click is only there for touch.
+  await toggle.hover();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(panel).toContainText("Built by teacher.dev");
+  expect((await panel.boundingBox())!.width).toBeGreaterThan(100);
+});
+
+test("keeps the brand chip out of the way on a narrow screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+
+  const chip = await page.getByTestId("brand-toggle").boundingBox();
+  const first = await page.getByTestId("shape-rectangularPrism").boundingBox();
+  const lastOnRow = await page
+    .getByTestId("shape-triangularPrism")
+    .boundingBox();
+  const view = await page.getByTestId("view-solid").boundingBox();
+
+  // The top edge is the tightest row on a phone. The mark leads the row, and
+  // what follows it still has to clear the view controls opposite.
+  expect(chip!.x + chip!.width).toBeLessThanOrEqual(first!.x);
+  expect(lastOnRow!.x + lastOnRow!.width).toBeLessThan(view!.x);
+});
+
+test("keeps the logo out of the shape picker, and behind the mark", async ({
+  page,
+}) => {
+  // It is not one of the six on offer.
+  await expect(page.getByTestId("shape-logoSlab")).toHaveCount(0);
+
+  await page.getByTestId("brand-toggle").click();
+
+  // The top radius is 1, the bottom radius is 1 + 1.5, and the 2-high
+  // bevel has a 2.5-long outside edge. The analytic totals stay exact.
+  await expect(page.getByTestId("surface-total")).toContainText("128");
+  await expect(page.getByTestId("surface-total")).toContainText("16π");
+  await expect(page.getByTestId("volume-total")).toContainText("88");
+  await expect(page.getByTestId("volume-total")).toContainText("6.5π");
+
+  // It is a solid like any other: it has a net and its own dimensions, while
+  // the slanted edge t is correctly derived rather than entered independently.
+  await expect(page.getByTestId("input-m")).toHaveValue("4");
+  await expect(page.getByTestId("input-r")).toHaveValue("1");
+  await expect(page.getByTestId("input-b")).toHaveValue("1.5");
+  await expect(page.getByTestId("input-h")).toHaveValue("2");
+  await expect(page.getByTestId("derived-t")).toContainText("2.5");
+  await page.getByTestId("view-net").click();
+  await expect(page.getByTestId("net-view")).toBeVisible();
+});
+
+test("reaches the about and privacy pages from the chip", async ({ page }) => {
+  await page.getByTestId("brand-toggle").hover();
+  await page.getByTestId("brand-about").click();
+
+  await expect(page).toHaveURL(/\/about$/);
+  await expect(
+    page.getByRole("heading", { name: "About", level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /support@teacher\.dev/ }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "privacy" }).click();
+  await expect(page).toHaveURL(/\/privacy$/);
+  await expect(
+    page.getByText("does not collect personal information"),
+  ).toBeVisible();
+
+  await page.getByTestId("back-to-lab").click();
+  await expect(page.getByTestId("solid-view")).toBeVisible();
+});

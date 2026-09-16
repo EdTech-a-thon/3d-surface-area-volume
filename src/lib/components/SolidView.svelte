@@ -22,6 +22,13 @@
     type Target,
   } from "$lib/state/lab.svelte";
   import { HATCH_PATTERN_ID, chipTint, facetFill } from "$lib/ui/colors";
+  import {
+    LOGO_MARK_INK,
+    LOGO_MARK_LOOP,
+    LOGO_MARK_STROKE,
+    LOGO_MARK_TICK,
+    logoMarkTransform,
+  } from "$lib/ui/logoMark";
   import { floorPlane, floorRules } from "$lib/ui/floor";
   import { fitFraction, gridLayers, gridScale } from "$lib/ui/grid";
 
@@ -130,7 +137,7 @@
       // Null hue means "not selected": each selected surface keeps its own.
       const hue = lab.hueFor(facet.surfaceId);
 
-      const fill = facetFill(hue, diffuse);
+      const fill = facetFill(hue, diffuse, lab.definition.baseHue ?? null);
       drawn.push({
         surfaceId: facet.surfaceId,
         points: projected
@@ -146,6 +153,27 @@
       });
     }
     return drawn.sort((a, b) => a.depth - b.depth);
+  });
+
+  /**
+   * The logo's doodle, placed on the tile's top face. Null whenever there is
+   * nothing to place it on: another solid, or this one turned face-away.
+   */
+  const logoMark = $derived.by(() => {
+    if (lab.kind !== "logoSlab") return null;
+    const up = rotatePoint([0, 1, 0], lab.yaw, lab.pitch);
+    if (up[2] <= 1e-6) return null;
+
+    const { m, r, h } = lab.dimensions;
+    // The artwork belongs to the smaller top face. Its own diagonal basis maps
+    // to that rounded square, not to the wider footprint below it.
+    const reach = (m + 2 * r) / 2;
+    const at = (x: number, z: number) =>
+      projectPoint(rotatePoint([x, h / 2, z], lab.yaw, lab.pitch), scale);
+    // The artwork's first half-diagonal runs to the tile corner that the home
+    // view puts on the right, and its second to the one nearest the viewer, so
+    // the doodle lands the way round it does on the mark itself.
+    return logoMarkTransform(at(0, 0), at(reach, -reach), at(reach, reach));
   });
 
   // Which drawn edge the pointer is on. The lab only knows which *length* is
@@ -567,6 +595,20 @@
         />
       {/if}
     {/each}
+
+    <!-- The mark itself, on the face it belongs to. Drawn after the facets, so
+         it sits on the top face rather than under it. -->
+    {#if logoMark}
+      <g transform={logoMark} pointer-events="none" stroke-linejoin="round">
+        <path
+          d={LOGO_MARK_LOOP}
+          fill="none"
+          stroke={LOGO_MARK_INK}
+          stroke-width={LOGO_MARK_STROKE}
+        />
+        <path d={LOGO_MARK_TICK} fill={LOGO_MARK_INK} />
+      </g>
+    {/if}
 
     {#each edges as drawn (drawn.edge.id)}
       {#if drawn.active || drawn.edge.style === "measure"}

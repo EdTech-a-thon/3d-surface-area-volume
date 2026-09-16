@@ -71,3 +71,10 @@ a {
   padding: 0.2em 0.14em 0 0.76em;
   line-height: 1.25;
 }
+
+/* The photo caption on the About page, in the spirit of a note written on the
+   print itself. System script faces only: nothing is fetched for it. */
+.handwriting {
+  font-family:
+    "Segoe Script", "Bradley Hand", "Snell Roundhand", "Comic Sans MS", cursive;
+}

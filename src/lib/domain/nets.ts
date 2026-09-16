@@ -36,6 +36,15 @@ export type NetPiece =
       /** Start angle in radians, measured in SVG coordinates. */
       readonly startAngle: number;
       readonly sweepAngle: number;
+    })
+  | (PieceBase & {
+      readonly shape: "annularSector";
+      readonly apex: Vec2;
+      readonly innerRadius: number;
+      readonly outerRadius: number;
+      /** Start angle in radians, measured in SVG coordinates. */
+      readonly startAngle: number;
+      readonly sweepAngle: number;
     });
 
 export interface NetBounds {
@@ -103,15 +112,22 @@ function boundsOf(pieces: readonly NetPiece[]): NetBounds {
       include(piece.center[0] - piece.radius, piece.center[1] - piece.radius);
       include(piece.center[0] + piece.radius, piece.center[1] + piece.radius);
     } else {
-      include(piece.apex[0], piece.apex[1]);
-      // Sample the arc rather than guess which extremes it reaches.
+      // Sample the arc rather than guess which cardinal extremes it reaches.
+      // A sector also contains its apex; an annular sector does not.
+      if (piece.shape === "sector") include(piece.apex[0], piece.apex[1]);
+      const radii =
+        piece.shape === "sector"
+          ? [piece.radius]
+          : [piece.innerRadius, piece.outerRadius];
       const steps = 64;
-      for (let i = 0; i <= steps; i += 1) {
-        const angle = piece.startAngle + (piece.sweepAngle * i) / steps;
-        include(
-          piece.apex[0] + piece.radius * Math.cos(angle),
-          piece.apex[1] + piece.radius * Math.sin(angle),
-        );
+      for (const radius of radii) {
+        for (let i = 0; i <= steps; i += 1) {
+          const angle = piece.startAngle + (piece.sweepAngle * i) / steps;
+          include(
+            piece.apex[0] + radius * Math.cos(angle),
+            piece.apex[1] + radius * Math.sin(angle),
+          );
+        }
       }
     }
   }
@@ -131,6 +147,30 @@ function boxNet(kind: SolidKind, l: number, w: number, h: number): Net {
     rectangle(id("bottom"), w, h, l, w, `${dec(l)} × ${dec(w)}`),
   ];
   return { pieces, bounds: boundsOf(pieces) };
+}
+
+/** Segments per rounded corner when the logo tile is drawn flat. */
+const TILE_CORNER_SEGMENTS = 8;
+
+/**
+ * The logo tile as one polygon: the square of side m grown outwards by the
+ * corner radius c. The arcs are tessellated, as curved surfaces are everywhere
+ * else here — the drawing approximates, the areas in solids.ts do not.
+ */
+function tilePolygon(cx: number, cy: number, m: number, c: number): Vec2[] {
+  const half = m / 2;
+  const centres: readonly (readonly [number, number])[] = [
+    [half, half],
+    [-half, half],
+    [-half, -half],
+    [half, -half],
+  ];
+  return centres.flatMap(([ox, oy], k) =>
+    Array.from({ length: TILE_CORNER_SEGMENTS + 1 }, (_, i): Vec2 => {
+      const angle = ((k + i / TILE_CORNER_SEGMENTS) * Math.PI) / 2;
+      return [cx + ox + c * Math.cos(angle), cy + oy + c * Math.sin(angle)];
+    }),
+  );
 }
 
 export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
@@ -243,6 +283,67 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
     }
     case "sphere":
       return null;
+    case "logoSlab": {
+      const { m, r, b, h } = d;
+      const slant = Math.hypot(h, b);
+      const pieces: NetPiece[] = [];
+
+      // Each straight bevel face is still a rectangle: both parallel edges are
+      // m long, and their perpendicular separation on the face is the slant t.
+      for (let k = 0; k < 4; k += 1) {
+        pieces.push(
+          rectangle(id(`flat${k + 1}`), k * m, 0, m, slant, `${dec(m)} × t`),
+        );
+      }
+
+      // The four rounded corners together are a complete conical frustum. Cut
+      // once and it opens into an annular sector. Similar triangles give the
+      // radii from the imaginary cone apex; its sweep makes the outer arc
+      // exactly the bottom circumference 2π(r + b).
+      const innerRadius = (r * slant) / b;
+      const outerRadius = ((r + b) * slant) / b;
+      const sweepAngle = (2 * Math.PI * b) / slant;
+      const sectorApex: Vec2 = [4 * m + outerRadius + 1, slant / 2];
+      const startAngle = Math.PI - sweepAngle / 2;
+      const middleAngle = startAngle + sweepAngle / 2;
+      const middleRadius = (innerRadius + outerRadius) / 2;
+      pieces.push({
+        shape: "annularSector",
+        surfaceId: id("corners"),
+        sizeText: "radii r and r + b, slant t",
+        apex: sectorApex,
+        innerRadius,
+        outerRadius,
+        startAngle,
+        sweepAngle,
+        labelAt: [
+          sectorApex[0] + middleRadius * Math.cos(middleAngle),
+          sectorApex[1] + middleRadius * Math.sin(middleAngle),
+        ],
+      });
+
+      // The top and bottom are separate pieces, as a cylinder's disks are. The
+      // larger bottom makes the keyboard-key taper explicit even while flat.
+      const topReach = m / 2 + r;
+      const bottomReach = m / 2 + r + b;
+      const topPoints = tilePolygon(m / 2, -topReach, m, r);
+      pieces.push({
+        shape: "polygon",
+        surfaceId: id("top"),
+        sizeText: `straight side ${dec(m)}, radius ${dec(r)}`,
+        labelAt: [m / 2, -topReach],
+        points: topPoints,
+      });
+      const bottomPoints = tilePolygon(m / 2, slant + bottomReach, m, r + b);
+      pieces.push({
+        shape: "polygon",
+        surfaceId: id("bottom"),
+        sizeText: `straight side ${dec(m)}, radius ${dec(r + b)}`,
+        labelAt: [m / 2, slant + bottomReach],
+        points: bottomPoints,
+      });
+      return { pieces, bounds: boundsOf(pieces) };
+    }
   }
 }
 
@@ -261,4 +362,28 @@ export function sectorPath(
   ];
   const largeArc = sweepAngle > Math.PI ? 1 : 0;
   return `M ${apex[0]} ${apex[1]} L ${start[0]} ${start[1]} A ${radius} ${radius} 0 ${largeArc} 1 ${end[0]} ${end[1]} Z`;
+}
+
+/** SVG path data for the unrolled rounded bevel: one annular sector. */
+export function annularSectorPath(
+  piece: Extract<NetPiece, { shape: "annularSector" }>,
+): string {
+  const { apex, innerRadius, outerRadius, startAngle, sweepAngle } = piece;
+  const point = (radius: number, angle: number): Vec2 => [
+    apex[0] + radius * Math.cos(angle),
+    apex[1] + radius * Math.sin(angle),
+  ];
+  const endAngle = startAngle + sweepAngle;
+  const outerStart = point(outerRadius, startAngle);
+  const outerEnd = point(outerRadius, endAngle);
+  const innerEnd = point(innerRadius, endAngle);
+  const innerStart = point(innerRadius, startAngle);
+  const largeArc = sweepAngle > Math.PI ? 1 : 0;
+  return [
+    `M ${outerStart[0]} ${outerStart[1]}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEnd[0]} ${outerEnd[1]}`,
+    `L ${innerEnd[0]} ${innerEnd[1]}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart[0]} ${innerStart[1]}`,
+    "Z",
+  ].join(" ");
 }

@@ -9,6 +9,8 @@ See [requirements.md](requirements.md) for the product decisions and proposed de
 - **Solid:** A closed three-dimensional shape with valid dimensions.
 - **Independent dimension:** A measurement entered by the teacher.
 - **Derived dimension:** A measurement calculated from independent dimensions, such as a hypotenuse or slant height.
+- **Logo solid:** The site's own mark as a tapered rounded-square keyboard key. It is not offered in the shape picker; it is
+  reached by clicking the mark beside it. Its measurements are exact like every other solid's.
 - **Surface:** One external planar face or curved surface. A sphere has one curved surface; do not describe it as a planar face.
 - **Surface area:** Sum of the areas of all external surfaces.
 - **Volume:** The three-dimensional space enclosed by the solid.
@@ -43,6 +45,9 @@ Stable surface identifiers link the 3D representation, net pieces, and mathemati
 | Cylinder | top disk, bottom disk, curved side | πr², πr², 2πrh |
 | Cone | base disk, curved side | πr², πrs |
 | Sphere | curved surface | 4πr² |
+| teacher.dev key | top face (radius r), larger bottom face (radius r + b), four straight bevel sides, rounded bevel corners | m² + 4mr + πr²; m² + 4m(r + b) + π(r + b)²; four mt; π(2r + b)t |
+
+The key's four rounded bevel corners are one surface, because together they are one conical frustum with radii r and r + b and slant t = √(h² + b²). Its four straight bevel sides are separate, so each carries its own badge. The perpendicular height h, not the slant, determines volume.
 
 Individual surface selection identifies the exact surface rather than automatically selecting every equally sized surface. The calculation presentation may group equal terms, but must make clear which selected surface contributes to that group.
 
@@ -56,6 +61,7 @@ All pieces in a net share one linear scale. Fitting the whole net into the viewp
 - **Cylinder:** One 2πr-by-h rectangle plus two radius-r disks. Show the circular pieces as separate net components with clearly associated joining boundaries; their curved edges do not share straight line segments with the rectangle in the plane.
 - **Cone:** One sector of radius s and central angle θ = 2πr/s radians, plus one radius-r base disk. Because h > 0, s > r and 0 < θ < 2π. The sector's arc length sθ = 2πr and area s²θ/2 = πrs. Lay out the base separately without overlap and associate its circumference with the sector arc.
 - **Sphere:** No net. Show an educational explanation rather than a fabricated flattened surface.
+- **teacher.dev key:** Four m-by-t rectangles, an annular sector for the four rounded corners considered as one conical frustum, and separate top and bottom rounded-square faces. The annular sector’s inner and outer arcs equal 2πr and 2π(r + b). The rounded outlines may be tessellated for drawing; all displayed areas and the integrated volume stay analytic.
 
 Curved surfaces may be tessellated for rendering. Their displayed area and volume formulas remain analytic, not mesh-based approximations.
 
@@ -110,4 +116,4 @@ These do not alter the physical calculations. Switching shape clears incompatibl
 9. Rotation, highlighting, unit-label changes, and view changes do not alter numeric geometry.
 10. Hidden final answers do not appear in rendered text, accessibility descriptions, tooltips, or net labels. Formula substitutions intentionally remain visible.
 
-Test the pure geometry and exact-expression model independently from rendering. Browser tests should cover dimension edits and validation, all six shape selections, solid/net switching, surface selection, answer reveal persistence, keyboard rotation, and a narrow viewport.
+Test the pure geometry and exact-expression model independently from rendering. Browser tests should cover dimension edits and validation, all six shape selections and the unlisted logo solid, solid/net switching, surface selection, answer reveal persistence, keyboard rotation, and a narrow viewport.

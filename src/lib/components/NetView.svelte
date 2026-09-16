@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { sectorPath, type Net } from "$lib/domain/nets";
+  import { annularSectorPath, sectorPath, type Net } from "$lib/domain/nets";
   import { DIMENSION_MAX } from "$lib/domain/types";
   import {
     surfaceTarget,
@@ -229,7 +229,9 @@
       />
     {/each}
 
-    {#each net.pieces as piece (piece.surfaceId)}
+    <!-- Keyed by position rather than surface id so a future cut may lay
+         one analytic surface out as several pieces without duplicate keys. -->
+    {#each net.pieces as piece, index (index)}
       {@const active = lab.isActive(surfaceTarget(piece.surfaceId))}
       {@const hue = lab.hueFor(piece.surfaceId)}
       {@const surface = surfaceOf(piece.surfaceId)}
@@ -237,8 +239,8 @@
         {#if piece.shape === "polygon"}
           <polygon
             points={pointsOf(piece.points)}
-            fill={netFill(hue)}
-            stroke={netStroke(hue)}
+            fill={netFill(hue, lab.definition.baseHue ?? null)}
+            stroke={netStroke(hue, lab.definition.baseHue ?? null)}
             stroke-width={active ? strokeWidth * 3 : strokeWidth}
             stroke-linejoin="round"
           />
@@ -254,8 +256,8 @@
             cx={piece.center[0]}
             cy={piece.center[1]}
             r={piece.radius}
-            fill={netFill(hue)}
-            stroke={netStroke(hue)}
+            fill={netFill(hue, lab.definition.baseHue ?? null)}
+            stroke={netStroke(hue, lab.definition.baseHue ?? null)}
             stroke-width={active ? strokeWidth * 3 : strokeWidth}
           />
           {#if active}
@@ -266,17 +268,32 @@
               fill="url(#net-{HATCH_PATTERN_ID})"
             />
           {/if}
-        {:else}
+        {:else if piece.shape === "sector"}
           <path
             d={sectorPath(piece)}
-            fill={netFill(hue)}
-            stroke={netStroke(hue)}
+            fill={netFill(hue, lab.definition.baseHue ?? null)}
+            stroke={netStroke(hue, lab.definition.baseHue ?? null)}
             stroke-width={active ? strokeWidth * 3 : strokeWidth}
             stroke-linejoin="round"
           />
           {#if active}
             <path
               d={sectorPath(piece)}
+              fill="url(#net-{HATCH_PATTERN_ID})"
+              stroke="none"
+            />
+          {/if}
+        {:else}
+          <path
+            d={annularSectorPath(piece)}
+            fill={netFill(hue, lab.definition.baseHue ?? null)}
+            stroke={netStroke(hue, lab.definition.baseHue ?? null)}
+            stroke-width={active ? strokeWidth * 3 : strokeWidth}
+            stroke-linejoin="round"
+          />
+          {#if active}
+            <path
+              d={annularSectorPath(piece)}
               fill="url(#net-{HATCH_PATTERN_ID})"
               stroke="none"
             />
