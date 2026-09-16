@@ -13,6 +13,7 @@ import { fromTenths } from "$lib/domain/rational";
 import { SOLIDS, buildSolid, defaultDimensions } from "$lib/domain/solids";
 import type { Dimensions, SolidKind } from "$lib/domain/types";
 import { dimensionToDraft, parseDimension } from "$lib/domain/validation";
+import { surfaceHue } from "$lib/ui/colors";
 
 export type ViewMode = "solid" | "net";
 
@@ -115,6 +116,23 @@ export class LabState {
     }
     return all;
   });
+
+  /** Each surface of the current solid gets its own hue, in listed order. */
+  huesBySurfaceId = $derived(
+    Object.fromEntries(
+      this.model.surfaces.map((surface, index) => [
+        surface.id,
+        surfaceHue(index),
+      ]),
+    ) as Record<string, number>,
+  );
+
+  /** The hue a surface should be drawn in, or null while it is not selected. */
+  hueFor(surfaceId: string): number | null {
+    return this.isActive(surfaceTarget(surfaceId))
+      ? (this.huesBySurfaceId[surfaceId] ?? surfaceHue(0))
+      : null;
+  }
 
   isActive(target: Target): boolean {
     return this.hovered === target || this.pinned.includes(target);

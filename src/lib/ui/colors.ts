@@ -4,22 +4,53 @@
  * Colour is only ever a secondary cue: a selected surface also gets a hatch
  * pattern, a thicker outline and a short code badge that matches the
  * calculation row, so the app still works for colour-blind students and on a
- * washed-out projector.
+ * washed-out projector. Each surface of a solid gets its own hue, so two
+ * surfaces pinned at once stay told apart.
  */
 export const HATCH_PATTERN_ID = "selected-surface-hatch";
 
-/** Shaded fill for a 3D facet, given a diffuse light factor in 0…1. */
-export function facetFill(selected: boolean, diffuse: number): string {
+/**
+ * Hues for selected surfaces, in the order surfaces are listed on a solid. Six
+ * is the most any solid here has (a prism's faces), and they are spread far
+ * enough apart to stay distinct next to the unselected slate blue.
+ */
+const SURFACE_HUES = [24, 286, 145, 336, 52, 255];
+
+/** The hue for the nth surface of a solid. */
+export function surfaceHue(index: number): number {
+  const wrapped =
+    ((index % SURFACE_HUES.length) + SURFACE_HUES.length) % SURFACE_HUES.length;
+  return SURFACE_HUES[wrapped];
+}
+
+/**
+ * Shaded fill for a 3D facet, given a diffuse light factor in 0…1. A selected
+ * facet is filled in its surface's own hue; `hue` is null when unselected.
+ */
+export function facetFill(hue: number | null, diffuse: number): string {
   const clamped = Math.max(0, Math.min(1, diffuse));
-  if (selected) return `hsl(24 88% ${44 + 30 * clamped}%)`;
+  if (hue !== null) return `hsl(${hue} 72% ${48 + 26 * clamped}%)`;
   return `hsl(203 40% ${30 + 44 * clamped}%)`;
 }
 
 /** Flat fill for a net piece, which has no lighting. */
-export function netFill(selected: boolean): string {
-  return selected ? "hsl(28 92% 80%)" : "hsl(203 38% 88%)";
+export function netFill(hue: number | null): string {
+  return hue !== null ? `hsl(${hue} 82% 80%)` : "hsl(203 38% 88%)";
 }
 
-export function netStroke(selected: boolean): string {
-  return selected ? "hsl(20 82% 30%)" : "hsl(203 34% 34%)";
+export function netStroke(hue: number | null): string {
+  return hue !== null ? `hsl(${hue} 72% 30%)` : "hsl(203 34% 34%)";
+}
+
+/** Tint for the label chip that opens over a selected surface. */
+export function chipTint(hue: number): {
+  border: string;
+  background: string;
+  text: string;
+} {
+  return {
+    border: `hsl(${hue} 65% 38%)`,
+    background: `hsl(${hue} 88% 95%)`,
+    text: `hsl(${hue} 72% 24%)`,
+  };
 }

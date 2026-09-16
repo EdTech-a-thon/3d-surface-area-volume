@@ -19,7 +19,7 @@
     type LabState,
     type Target,
   } from "$lib/state/lab.svelte";
-  import { HATCH_PATTERN_ID, facetFill } from "$lib/ui/colors";
+  import { HATCH_PATTERN_ID, chipTint, facetFill } from "$lib/ui/colors";
 
   let {
     lab,
@@ -73,9 +73,10 @@
         unit[0] * LIGHT[0] + unit[1] * LIGHT[1] + unit[2] * LIGHT[2],
       );
       const projected = rotated.map((point) => projectPoint(point, scale));
-      const active = lab.isActive(surfaceTarget(facet.surfaceId));
+      // Null hue means "not selected": each selected surface keeps its own.
+      const hue = lab.hueFor(facet.surfaceId);
 
-      const fill = facetFill(active, diffuse);
+      const fill = facetFill(hue, diffuse);
       drawn.push({
         surfaceId: facet.surfaceId,
         points: projected
@@ -164,6 +165,7 @@
         return {
           surface,
           target,
+          tint: chipTint(lab.huesBySurfaceId[surface.id] ?? 0),
           active: lab.isActive(target),
           pinned: lab.isPinned(target),
           value,
@@ -358,8 +360,10 @@
       )} ${linear}. Drag or use the arrow keys to rotate. Point at a face or an edge to measure it.`,
   );
 
+  // The chip's colours are set per surface, so only the shape of it is shared.
   const chip =
-    "absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-lg border border-flag bg-flag-soft/95 px-2 py-1 text-left font-mono text-xs leading-tight shadow-lg shadow-ink/20 backdrop-blur-sm";
+    "absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-lg border px-2 py-1 text-left font-mono text-xs leading-tight shadow-lg shadow-ink/20 backdrop-blur-sm";
+  const measureChip = `${chip} border-flag bg-flag-soft/95`;
 
   /**
    * An open label sits over the very thing it measures, so while it is only
@@ -485,15 +489,21 @@
         type="button"
         data-testid="surface-{badge.surface.localId}"
         aria-pressed={badge.pinned}
-        aria-label="{badge.surface.name}, {badge.surface
-          .formula}{lab.answersVisible ? `, ${badge.value} ${areaUnit}` : ''}"
+        aria-label="{badge.surface.name}{lab.showFormulas
+          ? `, ${badge.surface.formula}`
+          : ''}{lab.answersVisible ? `, ${badge.value} ${areaUnit}` : ''}"
         class={badge.active
           ? `${chip} max-w-[14rem] ${reach(badge.pinned)}`
           : "pointer-events-auto absolute grid h-7 w-7 -translate-x-1/2 -translate-y-1/2 cursor-pointer place-items-center rounded-full border border-rule/70 bg-panel/80 text-[11px] font-bold text-ink-soft shadow-sm backdrop-blur-sm hover:border-accent hover:text-accent"}
-        class:ring-2={badge.pinned}
-        class:ring-flag={badge.pinned}
         style:left="{badge.x}px"
         style:top="{badge.y}px"
+        style:border-color={badge.active ? badge.tint.border : undefined}
+        style:background={badge.active ? badge.tint.background : undefined}
+        style:color={badge.active ? badge.tint.text : undefined}
+        style:outline={badge.active && badge.pinned
+          ? `2px solid ${badge.tint.border}`
+          : undefined}
+        style:outline-offset="2px"
         onpointerenter={() => lab.hover(badge.target)}
         onpointerleave={() => lab.unhover(badge.target)}
         onfocus={() => lab.hover(badge.target)}
@@ -502,10 +512,14 @@
       >
         {#if badge.active}
           <span class="block font-sans font-bold"
-            >{badge.surface.code} · {badge.surface.formula}</span
+            >{badge.surface.code} · {badge.surface.name}{lab.showFormulas
+              ? ` · ${badge.surface.formula}`
+              : ""}</span
           >
           <span class="block" data-testid="face-value-{badge.surface.localId}">
-            {badge.surface.substitution} =
+            <!-- The working only appears while the fx toggle is on, exactly as
+                 it does for the totals. -->
+            {lab.showFormulas ? `${badge.surface.substitution} =` : "="}
             {#if lab.answersVisible}
               <strong>{badge.value}</strong>
               {areaUnit}{#if badge.approximate}
@@ -530,7 +544,7 @@
         data-target={label.target}
         aria-pressed={label.pinned}
         aria-label={label.text}
-        class="{chip} whitespace-nowrap {reach(label.pinned)}"
+        class="{measureChip} whitespace-nowrap {reach(label.pinned)}"
         class:ring-2={label.pinned}
         class:ring-flag={label.pinned}
         style:left="{label.x}px"

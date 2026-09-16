@@ -106,13 +106,14 @@
 
     {#each net.pieces as piece (piece.surfaceId)}
       {@const active = lab.isActive(surfaceTarget(piece.surfaceId))}
+      {@const hue = lab.hueFor(piece.surfaceId)}
       {@const surface = surfaceOf(piece.surfaceId)}
       <g data-target={surfaceTarget(piece.surfaceId)} class="cursor-pointer">
         {#if piece.shape === "polygon"}
           <polygon
             points={pointsOf(piece.points)}
-            fill={netFill(active)}
-            stroke={netStroke(active)}
+            fill={netFill(hue)}
+            stroke={netStroke(hue)}
             stroke-width={active ? strokeWidth * 3 : strokeWidth}
             stroke-linejoin="round"
           />
@@ -128,8 +129,8 @@
             cx={piece.center[0]}
             cy={piece.center[1]}
             r={piece.radius}
-            fill={netFill(active)}
-            stroke={netStroke(active)}
+            fill={netFill(hue)}
+            stroke={netStroke(hue)}
             stroke-width={active ? strokeWidth * 3 : strokeWidth}
           />
           {#if active}
@@ -143,8 +144,8 @@
         {:else}
           <path
             d={sectorPath(piece)}
-            fill={netFill(active)}
-            stroke={netStroke(active)}
+            fill={netFill(hue)}
+            stroke={netStroke(hue)}
             stroke-width={active ? strokeWidth * 3 : strokeWidth}
             stroke-linejoin="round"
           />
