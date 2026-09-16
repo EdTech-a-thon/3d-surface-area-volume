@@ -1,10 +1,10 @@
-import { DIMENSION_MAX, DIMENSION_MIN, DIMENSION_STEP } from "./types";
+import { DIMENSION_MIN, DIMENSION_STEP, DIMENSION_TYPED_MAX } from "./types";
 
 export type DimensionParse =
   | { readonly ok: true; readonly value: number }
   | { readonly ok: false; readonly message: string };
 
-export const RANGE_MESSAGE = `Enter a number from ${DIMENSION_MIN} to ${DIMENSION_MAX}`;
+export const RANGE_MESSAGE = `Enter a number from ${DIMENSION_MIN} to ${DIMENSION_TYPED_MAX}`;
 export const STEP_MESSAGE = `Use steps of ${DIMENSION_STEP}, for example 2.5`;
 
 /**
@@ -21,7 +21,7 @@ export function parseDimension(raw: string): DimensionParse {
 
   const value = Number(text);
   if (!Number.isFinite(value)) return { ok: false, message: RANGE_MESSAGE };
-  if (value < DIMENSION_MIN || value > DIMENSION_MAX)
+  if (value < DIMENSION_MIN || value > DIMENSION_TYPED_MAX)
     return { ok: false, message: RANGE_MESSAGE };
 
   // Work in tenths so 0.3 does not fail on binary floating-point error.

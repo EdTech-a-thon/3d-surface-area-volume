@@ -66,6 +66,9 @@ async function pointAway(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
+  // Clicks and keystrokes are dropped until the page is live, which takes a
+  // moment against a dev server building modules on demand.
+  await expect(page.locator("[data-ready=true]")).toBeAttached();
 });
 
 test("shows the exact surface area and volume of every solid", async ({
@@ -108,7 +111,7 @@ test("rejects invalid dimensions and keeps the last valid geometry", async ({
 }) => {
   const before = await totals(page);
 
-  for (const invalid of ["", "0", "-2", "20.1", "abc", "2.25"]) {
+  for (const invalid of ["", "0", "-2", "100000.1", "abc", "2.25"]) {
     await page.getByTestId("input-l").fill(invalid);
     await expect(page.getByTestId("error-l")).toBeVisible();
     await expect(page.getByTestId("solid-view")).toBeVisible();
@@ -130,7 +133,6 @@ test("switches between the solid and its net, and explains the sphere", async ({
   await page.getByTestId("view-net").click();
   await expect(page.getByTestId("net-view")).toBeVisible();
   await expect(page.getByTestId("solid-view")).toHaveCount(0);
-  await expect(page.getByTestId("net-note")).toContainText("2πr");
   // Dimensions and results survive the view change.
   await expect(page.getByTestId("input-r")).toHaveValue("2");
   await expect(page.getByTestId("surface-total")).toContainText("20π");
@@ -164,12 +166,20 @@ test("measures a face while the pointer is on it", async ({ page }) => {
   await expect(badge).toHaveText("F");
 
   await pointAtFace(page, "rectangularPrism:front");
-  await expect(badge).toContainText("l × h");
-  await expect(badge).toContainText("3 × 5 = 15");
+  await expect(badge).toContainText("Front face");
+  await expect(badge).toContainText("= 15");
+  // The working belongs to the formula toggle, not to the face.
+  await expect(badge).not.toContainText("l × h");
 
   // Letting go of the face puts the measurement away again.
   await pointAway(page);
   await expect(badge).toHaveText("F");
+
+  // With formulas switched on, the same face shows its working too.
+  await page.getByTestId("toggle-formulas").click();
+  await pointAtFace(page, "rectangularPrism:front");
+  await expect(badge).toContainText("l × h");
+  await expect(badge).toContainText("3 × 5 = 15");
 });
 
 test("keeps a measurement on screen once its face is clicked", async ({
@@ -180,7 +190,7 @@ test("keeps a measurement on screen once its face is clicked", async ({
   await expect(badge).toHaveAttribute("aria-pressed", "true");
 
   await pointAway(page);
-  await expect(badge).toContainText("3 × 4 = 12");
+  await expect(badge).toContainText("= 12");
 
   // The same surface stays highlighted in the net, and comes back when the
   // solid does.
@@ -347,7 +357,7 @@ test("supports every essential action from the keyboard alone", async ({
 
   // A face, measured from its badge rather than by pointing at it.
   await page.getByTestId("surface-side").press("Enter");
-  await expect(page.getByTestId("surface-side")).toContainText("πrs");
+  await expect(page.getByTestId("surface-side")).toContainText("Curved side");
 
   // A length, measured from the dimension bar rather than from the shape.
   await page.getByTestId("measure-h").press("Enter");
@@ -391,4 +401,33 @@ test("stays usable on a narrow screen", async ({ page }) => {
       document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("takes typed sizes far past the slider, while the slider stays bounded", async ({
+  page,
+}) => {
+  await page.getByTestId("input-l").fill("2500");
+  await expect(page.getByTestId("error-l")).toHaveCount(0);
+  // 2500 × the other two default dimensions.
+  await expect(page.getByTestId("volume-total")).toContainText("50000");
+
+  const range = page.getByTestId("range-l");
+  await expect(range).toHaveAttribute("max", "20");
+  // The handle rests at the top of the slider's own range until it is dragged.
+  await expect(range).toHaveValue("20");
+
+  await page.getByTestId("decrease-l").click();
+  await expect(page.getByTestId("input-l")).toHaveValue("2499.9");
+});
+
+test("keeps rounded decimals short, with the detail a hover away", async ({
+  page,
+}) => {
+  await page.getByTestId("shape-cylinder").click();
+  const approx = page.getByTestId("surface-total-approx");
+
+  // Only the visible form counts: the other is display:none until hovered.
+  await expect(approx).toHaveText("≈ 62.8", { useInnerText: true });
+  await approx.hover();
+  await expect(approx).toHaveText("≈ 62.83185", { useInnerText: true });
 });

@@ -1,14 +1,12 @@
 <script lang="ts">
+  import Approximation from "$lib/components/Approximation.svelte";
   import { evalExact, formatExact } from "$lib/domain/exact";
-  import {
-    UNITS,
-    approximateText,
-    formatApproximate,
-  } from "$lib/domain/format";
+  import { UNITS } from "$lib/domain/format";
   import {
     DIMENSION_MAX,
     DIMENSION_MIN,
     DIMENSION_STEP,
+    DIMENSION_TYPED_MAX,
   } from "$lib/domain/types";
   import { measureTarget, type LabState } from "$lib/state/lab.svelte";
 
@@ -64,7 +62,7 @@
         <input
           id="dimension-{spec.key}"
           data-testid="input-{spec.key}"
-          class="w-14 shrink-0 rounded-md border bg-panel px-1 py-0.5 text-center font-mono text-base {error
+          class="w-16 shrink-0 rounded-md border bg-panel px-1 py-0.5 text-center font-mono text-base {error
             ? 'border-flag'
             : 'border-rule'}"
           type="text"
@@ -80,9 +78,12 @@
           class={step}
           aria-label="Increase {spec.label} by {DIMENSION_STEP}"
           data-testid="increase-{spec.key}"
-          disabled={lab.dimensions[spec.key] >= DIMENSION_MAX}
+          disabled={lab.dimensions[spec.key] >= DIMENSION_TYPED_MAX}
           onclick={() => lab.nudgeDimension(spec.key, DIMENSION_STEP)}>+</button
         >
+        <!-- The slider only covers the sizes that read well on screen. A typed
+             value may be far larger; the handle then rests at the top of the
+             slider until it is dragged back into that range. -->
         <input
           class="hidden w-28 accent-accent sm:block"
           type="range"
@@ -91,7 +92,7 @@
           step={DIMENSION_STEP}
           data-testid="range-{spec.key}"
           aria-label="{spec.label} slider, in {linear}"
-          value={lab.dimensions[spec.key]}
+          value={Math.min(lab.dimensions[spec.key], DIMENSION_MAX)}
           oninput={(event) => lab.setDraft(spec.key, event.currentTarget.value)}
         />
       </div>
@@ -123,9 +124,7 @@
       {derived.substitution.endsWith(`= ${exact}`)
         ? derived.substitution
         : `${derived.substitution} = ${exact}`}
-      {#if formatApproximate(value).rounded}
-        <span>({approximateText(value)})</span>
-      {/if}
+      <Approximation {value} class="text-xs" />
     </p>
   {/each}
 </section>

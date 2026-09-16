@@ -72,8 +72,13 @@
       stroke-linejoin="round"
       aria-hidden="true"
     >
-      <path d="M3 12a9 9 0 1 0 3-6.7" />
-      <path d="M3 4v5h5" />
+      <!-- Corner brackets closing on a centred dot: put the shape back where
+           it started. Deliberately nothing like the spin button's orbit. -->
+      <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9" />
+      <path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9" />
+      <path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15" />
+      <path d="M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" />
+      <circle cx="12" cy="12" r="2.4" />
     </svg>
   </button>
   <button
@@ -106,8 +111,12 @@
       {#if lab.autoRotate}
         <path d="M9 5v14M15 5v14" />
       {:else}
-        <path d="M4 12a8 8 0 1 1 2.5 5.8" />
-        <path d="M4 18v-5h5" />
+        <!-- Two arrows chasing each other round: keep turning. The reset
+             button next door is a square frame, so the two never look alike. -->
+        <path d="M20.5 12a8.5 8.5 0 0 0-8.5-8.5A8.5 8.5 0 0 0 5.6 6.7" />
+        <path d="M4 3.5v4h4" />
+        <path d="M3.5 12a8.5 8.5 0 0 0 8.5 8.5 8.5 8.5 0 0 0 6.4-3.2" />
+        <path d="M20 20.5v-4h-4" />
       {/if}
     </svg>
   </button>

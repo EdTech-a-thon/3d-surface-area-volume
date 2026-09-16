@@ -70,5 +70,11 @@ export interface SolidModel {
 }
 
 export const DIMENSION_MIN = 0.1;
+/** The range the drag slider covers: the sizes that read well on screen. */
 export const DIMENSION_MAX = 20;
+/**
+ * Typed entries are allowed far past the slider, so a class can try a
+ * warehouse-sized prism. The views scale to whatever they are given.
+ */
+export const DIMENSION_TYPED_MAX = 100000;
 export const DIMENSION_STEP = 0.1;

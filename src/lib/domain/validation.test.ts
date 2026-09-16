@@ -9,6 +9,12 @@ describe("dimension validation", () => {
     }
   });
 
+  it("accepts typed values far beyond the slider's range", () => {
+    for (const raw of ["20.1", "250", "100000"]) {
+      expect(parseDimension(raw)).toEqual({ ok: true, value: Number(raw) });
+    }
+  });
+
   it("trims surrounding whitespace", () => {
     expect(parseDimension("  3.5 ")).toEqual({ ok: true, value: 3.5 });
   });
@@ -24,7 +30,7 @@ describe("dimension validation", () => {
     });
     expect(parseDimension("0")).toEqual({ ok: false, message: RANGE_MESSAGE });
     expect(parseDimension("-2")).toEqual({ ok: false, message: RANGE_MESSAGE });
-    expect(parseDimension("20.1")).toEqual({
+    expect(parseDimension("100000.1")).toEqual({
       ok: false,
       message: RANGE_MESSAGE,
     });
@@ -62,11 +68,15 @@ describe("dimension validation", () => {
 describe("approximate formatting", () => {
   it("marks rounded values and leaves exact ones unmarked", () => {
     expect(formatApproximate(12 * Math.PI)).toEqual({
-      text: "37.70",
+      text: "37.7",
       rounded: true,
     });
-    expect(formatApproximate(94)).toEqual({ text: "94.00", rounded: false });
-    expect(approximateText(12 * Math.PI)).toBe("≈ 37.70");
-    expect(approximateText(60)).toBe("60.00");
+    expect(formatApproximate(94)).toEqual({ text: "94.0", rounded: false });
+    expect(approximateText(12 * Math.PI)).toBe("≈ 37.7");
+    expect(approximateText(60)).toBe("60.0");
+  });
+
+  it("can show more places for the detail view", () => {
+    expect(approximateText(12 * Math.PI, 5)).toBe("≈ 37.69911");
   });
 });
