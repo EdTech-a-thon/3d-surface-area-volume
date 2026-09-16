@@ -1,10 +1,7 @@
 <script lang="ts">
+  import Approximation from "$lib/components/Approximation.svelte";
   import { evalExact, formatExact } from "$lib/domain/exact";
-  import {
-    UNITS,
-    approximateText,
-    formatApproximate,
-  } from "$lib/domain/format";
+  import { UNITS } from "$lib/domain/format";
   import type { Calculation } from "$lib/domain/types";
   import type { LabState } from "$lib/state/lab.svelte";
 
@@ -35,21 +32,21 @@
     >
     {#if lab.answersVisible}
       <span
-        class="font-mono text-2xl leading-tight font-bold"
+        class="font-mono text-xl leading-tight font-bold"
         data-testid={testid}
       >
         {formatExact(calculation.exact)}
-        <span class="text-sm font-normal text-ink-soft">{unitLabel}</span>
-        {#if formatApproximate(value).rounded}
-          <span class="text-sm font-normal whitespace-nowrap text-ink-soft"
-            >{approximateText(value)}</span
-          >
-        {/if}
+        <span class="text-xs font-normal text-ink-soft">{unitLabel}</span>
+        <Approximation
+          {value}
+          class="text-xs font-normal text-ink-soft"
+          testid="{testid}-approx"
+        />
       </span>
     {:else}
       <span
         data-testid="{testid}-hidden"
-        class="font-mono text-2xl leading-tight font-bold text-ink-soft/50"
+        class="font-mono text-xl leading-tight font-bold text-ink-soft/50"
       >
         <span aria-hidden="true">—</span><span class="sr-only">hidden</span>
       </span>

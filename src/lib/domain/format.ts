@@ -36,7 +36,10 @@ export const UNITS: Record<UnitKey, UnitLabels> = {
 
 export const UNIT_ORDER: readonly UnitKey[] = ["units", "cm", "m", "in"];
 
-export const DECIMAL_PLACES = 2;
+/** Rounded decimals stay short so they never crowd the exact answer. */
+export const DECIMAL_PLACES = 1;
+/** The longer form, revealed on hover for anyone who wants the detail. */
+export const DETAIL_DECIMAL_PLACES = 5;
 
 export interface ApproximateValue {
   /** The rounded number as text, without an approximation sign. */

@@ -9,10 +9,17 @@
   import { UNITS, UNIT_ORDER } from "$lib/domain/format";
   import type { UnitKey } from "$lib/domain/format";
   import { LabState } from "$lib/state/lab.svelte";
+  import { onMount } from "svelte";
 
   const lab = new LabState();
 
   let reducedMotion = $state(false);
+  /** Flipped once the page is live in the browser; nothing responds before that. */
+  let ready = $state(false);
+
+  onMount(() => {
+    ready = true;
+  });
 
   $effect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -30,6 +37,7 @@
      it at a corner, so nothing competes with the solid for attention. -->
 <div
   class="relative h-[100dvh] w-full overflow-hidden bg-gradient-to-b from-paper to-accent-soft/50"
+  data-ready={ready ? "true" : undefined}
 >
   <h1 class="sr-only">Shape Lab</h1>
 
@@ -74,7 +82,7 @@
     </select>
   </div>
 
-  <!-- Centred notes: only ever one line, and only when there is something to say. -->
+  <!-- Centred note: the one case where a shape needs a word of explanation. -->
   <div
     class="pointer-events-none absolute inset-x-0 top-2 z-10 flex flex-col items-center gap-1.5 px-28"
   >
@@ -88,23 +96,19 @@
         flattened without stretching, which is why world maps distort countries.
       </p>
     {/if}
-    {#if lab.view === "net" && lab.net?.note}
-      <p
-        data-testid="net-note"
-        class="max-w-xl rounded-lg border border-rule/70 bg-panel/90 px-3 py-1.5 text-center text-xs text-ink-soft shadow-lg shadow-ink/10 backdrop-blur-md"
-      >
-        {lab.net.note}
-      </p>
-    {/if}
   </div>
 
   <!-- Bottom: the dimensions on the left, the answers on the right, and the
-       view controls between them. They wrap into rows on a narrow screen. -->
+       view controls between them. The view controls are centred on the screen
+       rather than on the gap, so they stay put as the panels either side change
+       width. On a phone they drop to their own row underneath. -->
   <div
     class="pointer-events-none absolute inset-x-2 bottom-2 z-20 flex flex-wrap items-end justify-between gap-2"
   >
     <MeasureBar {lab} />
-    <div class="order-last flex flex-1 justify-center sm:order-none">
+    <div
+      class="order-last flex w-full justify-center sm:absolute sm:bottom-0 sm:left-1/2 sm:order-none sm:w-auto sm:-translate-x-1/2"
+    >
       <RotationControls {lab} {reducedMotion} />
     </div>
     <TotalsCard {lab} />

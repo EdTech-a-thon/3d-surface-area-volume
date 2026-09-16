@@ -48,8 +48,6 @@ export interface NetBounds {
 export interface Net {
   readonly pieces: readonly NetPiece[];
   readonly bounds: NetBounds;
-  /** Explanation of how curved edges meet, shown as a caption under the net. */
-  readonly note?: string;
 }
 
 function dec(value: number): string {
@@ -183,7 +181,6 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
       return {
         pieces,
         bounds: boundsOf(pieces),
-        note: "The three rectangles share the prism length. Each triangle joins the leg-a rectangle along an edge of length a.",
       };
     }
     case "cylinder": {
@@ -211,7 +208,6 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
       return {
         pieces,
         bounds: boundsOf(pieces),
-        note: "The rectangle is 2πr wide, exactly the circumference of each disk. The disks meet it along a curve, not a straight edge, so they are shown as separate pieces touching the edge they join.",
       };
     }
     case "cone": {
@@ -243,7 +239,6 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
       return {
         pieces,
         bounds: boundsOf(pieces),
-        note: "The curved side unrolls into a sector, not a triangle. Its straight radius is the slant height s, and its arc has the same length as the base circumference 2πr.",
       };
     }
     case "sphere":
