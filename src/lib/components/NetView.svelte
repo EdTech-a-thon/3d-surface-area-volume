@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { UNITS } from "$lib/domain/format";
   import { sectorPath, type Net } from "$lib/domain/nets";
   import { DIMENSION_MAX } from "$lib/domain/types";
   import {
@@ -8,9 +7,17 @@
     type Target,
   } from "$lib/state/lab.svelte";
   import { HATCH_PATTERN_ID, netFill, netStroke } from "$lib/ui/colors";
-  import { fitFraction, gridScale } from "$lib/ui/grid";
+  import { fitFraction, gridLayers, gridScale } from "$lib/ui/grid";
   import { splitMath } from "$lib/ui/mathText";
-  import ScaleKey from "$lib/components/ScaleKey.svelte";
+  import {
+    RADICAL_RULE_OVERLAP,
+    RADICAL_RULE_WEIGHT,
+    RADICAL_STEM_WEIGHT,
+    RADICAL_TICK_WEIGHT,
+    RADICAL_WIDTH,
+    radicalStemPath,
+    radicalTickPath,
+  } from "$lib/ui/radical";
 
   let { lab, net }: { lab: LabState; net: Net } = $props();
 
@@ -62,8 +69,11 @@
   const viewBox = $derived(`${box.x} ${box.y} ${box.w} ${box.h}`);
   /** The net is fitted to the screen too, so it carries the same measured grid. */
   const grid = $derived(gridScale(1 / layout.pixel));
-  const linear = $derived(UNITS[lab.unit].linear);
   const GRID_PATTERN_ID = "net-measured-grid";
+  const FINE_GRID_PATTERN_ID = "net-measured-grid-fine";
+  /** How dark the dots sit against the backdrop. */
+  const GRID_INK = 0.35;
+  const gridInk = $derived(gridLayers(GRID_INK, grid.fade));
   const codeSize = $derived(layout.pixel * 20);
   const sizeTextSize = $derived(layout.pixel * 13);
   const strokeWidth = $derived(layout.pixel * 1.5);
@@ -75,6 +85,63 @@
   function pointsOf(points: readonly (readonly [number, number])[]): string {
     return points.map(([x, y]) => `${x},${y}`).join(" ");
   }
+
+  /**
+   * Square-root signs for the size labels, one box per radicand.
+   *
+   * The labels are SVG text, so there is no line box to hang a drawn sign on
+   * the way `MathText.svelte` does. Instead each radicand is set with a gap in
+   * front of it, then measured once it is on screen: the gap is where the sign
+   * goes, and the measurement says how tall and how wide to draw it.
+   */
+  type RadicalBox = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+
+  let svgEl = $state<SVGSVGElement | undefined>();
+  let radicals = $state<RadicalBox[]>([]);
+
+  /** The gap left in front of a radicand, in the net's units. */
+  const signWidth = $derived(sizeTextSize * RADICAL_WIDTH);
+  const signGap = $derived(signWidth * 1.08);
+
+  $effect(() => {
+    // Read what moves the labels, so the signs are re-measured alongside them.
+    void [net, lab.model, sizeTextSize];
+    const svg = svgEl;
+    if (!svg) return;
+
+    const measure = () => {
+      const size = sizeTextSize;
+      radicals = [...svg.querySelectorAll(".net-radicand")].map((span) => {
+        const bounds = (span as SVGTSpanElement).getBBox();
+        // Digits have no descender, so the measured box stops at the baseline.
+        // The sign wants air above the digits for its rule and a little room
+        // below the baseline for its valley.
+        const top = bounds.y - size * 0.2;
+        const bottom = bounds.y + bounds.height + size * 0.06;
+        return {
+          x: bounds.x,
+          y: top,
+          width: bounds.width,
+          height: bottom - top,
+        };
+      });
+    };
+
+    measure();
+    // A late-loading font reflows every label underneath its finished sign.
+    let stale = false;
+    void document.fonts?.ready.then(() => {
+      if (!stale) measure();
+    });
+    return () => {
+      stale = true;
+    };
+  });
 
   /** The piece under an event, read straight off the markup. */
   function targetOf(event: Event): Target | null {
@@ -97,6 +164,7 @@
   bind:clientHeight={boxHeight}
 >
   <svg
+    bind:this={svgEl}
     class="h-full w-full"
     {viewBox}
     role="img"
@@ -112,20 +180,22 @@
     <defs>
       <!-- Dots a round number of units apart, in the net's own units, so the
            pieces spread over more of them as the solid grows. -->
-      <pattern
-        id={GRID_PATTERN_ID}
-        width={grid.step}
-        height={grid.step}
-        patternUnits="userSpaceOnUse"
-        patternTransform="translate({-grid.step / 2} {-grid.step / 2})"
-      >
-        <circle
-          cx={grid.step / 2}
-          cy={grid.step / 2}
-          r={layout.pixel * 1.6}
-          fill="#46606f"
-        />
-      </pattern>
+      {#each [{ id: GRID_PATTERN_ID, step: grid.step }, { id: FINE_GRID_PATTERN_ID, step: grid.fineStep }] as lattice (lattice.id)}
+        <pattern
+          id={lattice.id}
+          width={lattice.step}
+          height={lattice.step}
+          patternUnits="userSpaceOnUse"
+          patternTransform="translate({-lattice.step / 2} {-lattice.step / 2})"
+        >
+          <circle
+            cx={lattice.step / 2}
+            cy={lattice.step / 2}
+            r={layout.pixel * 1.6}
+            fill="#46606f"
+          />
+        </pattern>
+      {/each}
       <pattern
         id="net-{HATCH_PATTERN_ID}"
         width="14"
@@ -145,15 +215,19 @@
       </pattern>
     </defs>
 
-    <rect
-      x={box.x}
-      y={box.y}
-      width={box.w}
-      height={box.h}
-      fill="url(#{GRID_PATTERN_ID})"
-      opacity="0.35"
-      pointer-events="none"
-    />
+    <!-- The finer lattice first, so the coarse one fades out over it rather
+         than over the backdrop: see gridLayers. -->
+    {#each [{ id: FINE_GRID_PATTERN_ID, ink: gridInk.fine }, { id: GRID_PATTERN_ID, ink: gridInk.coarse }] as layer (layer.id)}
+      <rect
+        x={box.x}
+        y={box.y}
+        width={box.w}
+        height={box.h}
+        fill="url(#{layer.id})"
+        opacity={layer.ink}
+        pointer-events="none"
+      />
+    {/each}
 
     {#each net.pieces as piece (piece.surfaceId)}
       {@const active = lab.isActive(surfaceTarget(piece.surfaceId))}
@@ -230,13 +304,62 @@
           dominant-baseline="central"
           fill="#334155"
           pointer-events="none"
-          >{#each splitMath(piece.sizeText) as segment, index (index)}{#if segment.kind === "radical"}√<tspan
-                text-decoration="overline">{segment.radicand}</tspan
+          >{#each splitMath(piece.sizeText) as segment, index (index)}{#if segment.kind === "radical"}<tspan
+                class="net-radicand"
+                dx={signGap}>{segment.radicand}</tspan
+              ><tspan dx={sizeTextSize * 0.12}>&#8203;</tspan
               >{:else}{segment.text}{/if}{/each}</text
         >
       </g>
     {/each}
-  </svg>
 
-  <ScaleKey {grid} {linear} />
+    <!-- The signs sit above every piece, so a label that overhangs its own
+         piece keeps its root drawn in one colour rather than two. Each is
+         stroked in white first, matching the halo the labels already wear. -->
+    {#each radicals as radical, index (index)}
+      {@const left = radical.x - signWidth}
+      {@const tick = radicalTickPath(
+        left,
+        radical.y,
+        signWidth,
+        radical.height,
+      )}
+      {@const stem = radicalStemPath(
+        left,
+        radical.y,
+        signWidth,
+        radical.height,
+      )}
+      {@const ruleX = radical.x - signWidth * RADICAL_RULE_OVERLAP}
+      {@const ruleWidth =
+        radical.x + radical.width + sizeTextSize * 0.12 - ruleX}
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <g
+          class="label-halo"
+          stroke="#ffffff"
+          stroke-width={sizeTextSize * 0.35}
+          pointer-events="none"
+        >
+          <path d={tick} />
+          <path d={stem} />
+          <path
+            d="M{ruleX} {radical.y +
+              (sizeTextSize * RADICAL_RULE_WEIGHT) / 2}h{ruleWidth}"
+          />
+        </g>
+        <g stroke="#334155" pointer-events="none">
+          <path d={tick} stroke-width={sizeTextSize * RADICAL_TICK_WEIGHT} />
+          <path d={stem} stroke-width={sizeTextSize * RADICAL_STEM_WEIGHT} />
+          <rect
+            x={ruleX}
+            y={radical.y}
+            width={ruleWidth}
+            height={sizeTextSize * RADICAL_RULE_WEIGHT}
+            fill="#334155"
+            stroke="none"
+          />
+        </g>
+      </g>
+    {/each}
+  </svg>
 </div>

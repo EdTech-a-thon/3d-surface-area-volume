@@ -82,22 +82,6 @@
     </select>
   </div>
 
-  <!-- Centred note: the one case where a shape needs a word of explanation. -->
-  <div
-    class="pointer-events-none absolute inset-x-0 top-2 z-10 flex flex-col items-center gap-1.5 px-28"
-  >
-    {#if !lab.definition.hasNet}
-      <p
-        id="no-net-reason"
-        data-testid="no-net-reason"
-        class="max-w-md rounded-lg border border-rule/70 bg-panel/90 px-3 py-1.5 text-center text-xs shadow-lg shadow-ink/10 backdrop-blur-md"
-      >
-        A sphere has <strong>no flat net</strong>: its surface cannot be
-        flattened without stretching, which is why world maps distort countries.
-      </p>
-    {/if}
-  </div>
-
   <!-- Bottom: the dimensions on the left, the answers on the right, and the
        view controls between them. The view controls are centred on the screen
        rather than on the gap, so they stay put as the panels either side change

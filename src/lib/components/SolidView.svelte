@@ -1,6 +1,5 @@
 <script lang="ts">
   import MathText from "$lib/components/MathText.svelte";
-  import ScaleKey from "$lib/components/ScaleKey.svelte";
   import { evalExact, formatExact } from "$lib/domain/exact";
   import {
     UNITS,
@@ -23,7 +22,8 @@
     type Target,
   } from "$lib/state/lab.svelte";
   import { HATCH_PATTERN_ID, chipTint, facetFill } from "$lib/ui/colors";
-  import { fitFraction, gridScale } from "$lib/ui/grid";
+  import { floorPlane, floorRules } from "$lib/ui/floor";
+  import { fitFraction, gridLayers, gridScale } from "$lib/ui/grid";
 
   let {
     lab,
@@ -50,12 +50,48 @@
 
   /**
    * The drawing is always fitted to the screen, so growing a cube would change
-   * nothing on its own. The measured dot grid behind it is what shows the size:
-   * its dots are a fixed number of units apart, so the solid covers more of
-   * them as it grows.
+   * nothing on its own. The floor under it is what shows the size: its ruling
+   * is a fixed number of units apart, so the solid straddles more squares as it
+   * grows. See floor.ts.
    */
-  const GRID_PATTERN_ID = "measured-grid";
   const grid = $derived(gridScale(scale));
+  /** How dark the ruling sits against the backdrop. */
+  const FLOOR_INK = 0.55;
+  const gridInk = $derived(gridLayers(FLOOR_INK, grid.fade));
+  const FLOOR_MASK_ID = "floor-reach";
+  const FLOOR_FADE_ID = "floor-fade";
+
+  /**
+   * The foot of the solid. Every mesh is built around its own centre, so this
+   * is below the origin, and it is where the floor goes: the solid should stand
+   * on the plane rather than hover over it or sink into it.
+   */
+  const baseY = $derived.by(() => {
+    let lowest = 0;
+    for (const facet of lab.mesh.facets) {
+      for (const [, y] of facet.points) if (y < lowest) lowest = y;
+    }
+    return lowest;
+  });
+
+  /**
+   * How far the floor reaches, as a multiple of the solid's own size. A fitted
+   * solid is always about the same size on screen, so this keeps the floor about
+   * the same size on screen too — a patch of ground the solid stands on, not a
+   * ruled backdrop. What changes with the shape is how many squares fit on it.
+   */
+  const FLOOR_REACH = 2.4;
+  const floorRadius = $derived(lab.mesh.extent * FLOOR_REACH);
+  const floor = $derived(floorPlane(lab.yaw, lab.pitch, scale, baseY));
+  // Finer ruling first, so the coarse one fades out over it rather than over
+  // the bare floor: see gridLayers. A layer with no ink left in it is dropped
+  // rather than drawn invisibly, which is a hundred-odd lines saved.
+  const floorLayers = $derived(
+    [
+      { key: "fine", step: grid.fineStep, ink: gridInk.fine },
+      { key: "coarse", step: grid.step, ink: gridInk.coarse },
+    ].filter((layer) => layer.ink > 0.004),
+  );
 
   const linear = $derived(UNITS[lab.unit].linear);
   const areaUnit = $derived(UNITS[lab.unit].area);
@@ -428,18 +464,27 @@
     onkeydown={onKeyDown}
   >
     <defs>
-      <!-- Anchored half a tile back so a dot lands on the origin, which is the
-           centre of the solid: the shape then grows symmetrically across the
-           lattice instead of drifting over it. -->
-      <pattern
-        id={GRID_PATTERN_ID}
-        width={grid.gap}
-        height={grid.gap}
-        patternUnits="userSpaceOnUse"
-        patternTransform="translate({-grid.gap / 2} {-grid.gap / 2})"
+      <!-- The floor has no edge to it: it is ruled well past what is drawn and
+           then faded out in a circle around the solid, so the ruling thins into
+           the background instead of stopping at a rectangle. The fade is a
+           circle *on the floor*, laid into the scene by the same matrix as the
+           ruling, so it comes out as the ellipse the eye expects. -->
+      <radialGradient id={FLOOR_FADE_ID}>
+        <stop offset="0.45" stop-color="#fff" />
+        <stop offset="1" stop-color="#000" />
+      </radialGradient>
+      <mask
+        id={FLOOR_MASK_ID}
+        maskUnits="userSpaceOnUse"
+        x={-halfWidth}
+        y={-halfHeight}
+        width={halfWidth * 2}
+        height={halfHeight * 2}
       >
-        <circle cx={grid.gap / 2} cy={grid.gap / 2} r="1.6" fill="#46606f" />
-      </pattern>
+        <g transform={floor.matrix}>
+          <circle cx="0" cy="0" r={floorRadius} fill="url(#{FLOOR_FADE_ID})" />
+        </g>
+      </mask>
       <pattern
         id={HATCH_PATTERN_ID}
         width="14"
@@ -459,15 +504,47 @@
       </pattern>
     </defs>
 
-    <rect
-      x={-halfWidth}
-      y={-halfHeight}
-      width={halfWidth * 2}
-      height={halfHeight * 2}
-      fill="url(#{GRID_PATTERN_ID})"
-      opacity="0.35"
-      pointer-events="none"
-    />
+    {#snippet ground()}
+      <g
+        mask="url(#{FLOOR_MASK_ID})"
+        opacity={floor.openness}
+        pointer-events="none"
+      >
+        <g transform={floor.matrix}>
+          <circle cx="0" cy="0" r={floorRadius} fill="#46606f" opacity="0.05" />
+          <!-- The lines are laid out in the floor's own units, so
+               non-scaling-stroke is what keeps them a hairline on screen
+               instead of a unit thick in the scene. -->
+          {#each floorLayers as layer (layer.key)}
+            <g stroke="#46606f" stroke-opacity={layer.ink}>
+              {#each floorRules(layer.step, floorRadius) as rule (rule)}
+                <line
+                  x1={rule}
+                  y1={-floorRadius}
+                  x2={rule}
+                  y2={floorRadius}
+                  stroke-width="1"
+                  vector-effect="non-scaling-stroke"
+                />
+                <line
+                  x1={-floorRadius}
+                  y1={rule}
+                  x2={floorRadius}
+                  y2={rule}
+                  stroke-width="1"
+                  vector-effect="non-scaling-stroke"
+                />
+              {/each}
+            </g>
+          {/each}
+        </g>
+      </g>
+    {/snippet}
+
+    <!-- Seen from above the solid stands on the floor and hides the part it
+         covers; seen from below the floor is between the viewer and the solid,
+         so it goes on top instead. -->
+    {#if !floor.fromBelow}{@render ground()}{/if}
 
     {#each facets as facet, index (index)}
       <polygon
@@ -519,13 +596,13 @@
         data-edge={drawn.edge.id}
       />
     {/each}
+
+    {#if floor.fromBelow}{@render ground()}{/if}
   </svg>
 
   <!-- Measurements live above the drawing as real buttons, so they can be read,
        focused and pinned without a pointer. -->
   <div class="pointer-events-none absolute inset-0 overflow-hidden">
-    <ScaleKey {grid} {linear} />
-
     {#each badges as badge (badge.surface.id)}
       <button
         type="button"

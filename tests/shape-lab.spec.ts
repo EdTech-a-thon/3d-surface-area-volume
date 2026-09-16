@@ -142,8 +142,18 @@ test("switches between the solid and its net, and explains the sphere", async ({
 
   await page.getByTestId("shape-sphere").click();
   await expect(page.getByTestId("view-net")).toBeDisabled();
-  await expect(page.getByTestId("no-net-reason")).toContainText("no flat net");
   await expect(page.getByTestId("solid-view")).toBeVisible();
+
+  // The reason the Net tab is greyed out is always in the document, for anyone
+  // reading it through the tab, but it is only laid out on screen for someone
+  // pointing at the tab and asking.
+  const reason = page.getByTestId("no-net-reason");
+  await expect(reason).toContainText("no flat net");
+  expect((await reason.boundingBox())?.width).toBeLessThan(10);
+  await page.getByTestId("view-net").hover({ force: true });
+  await expect
+    .poll(async () => (await reason.boundingBox())?.width)
+    .toBeGreaterThan(100);
 });
 
 test("stops auto-rotation when a net is shown", async ({ page }) => {
