@@ -242,18 +242,15 @@
       .map((surface) => {
         const running = totals[surface.id];
         const target = surfaceTarget(surface.id);
-        const value = formatExact(surface.exact);
-        const rounded = formatApproximate(evalExact(surface.exact)).rounded;
         return {
           surface,
           target,
           tint: chipTint(lab.huesBySurfaceId[surface.id] ?? 0),
           active: lab.isActive(target),
           pinned: lab.isPinned(target),
-          value,
-          approximate: rounded
-            ? approximateText(evalExact(surface.exact))
-            : null,
+          // A face shows its exact area only: the rounded reading belongs to
+          // the totals card, where there is room to explain it.
+          value: formatExact(surface.exact),
           x: halfWidth + running.x / running.area,
           y: halfHeight + running.y / running.area,
         };
@@ -683,9 +680,7 @@
             {#if lab.showFormulas}<MathText text={badge.surface.substitution} /> ={:else}={/if}
             {#if lab.answersVisible}
               <strong><MathText text={badge.value} /></strong>
-              {areaUnit}{#if badge.approximate}
-                <span class="text-ink-soft"> {badge.approximate}</span>
-              {/if}
+              {areaUnit}
             {:else}
               <span data-testid="face-value-{badge.surface.localId}-hidden"
                 >?</span

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import MathText from "$lib/components/MathText.svelte";
+  import { formatExact } from "$lib/domain/exact";
+  import { UNITS } from "$lib/domain/format";
   import { annularSectorPath, sectorPath, type Net } from "$lib/domain/nets";
   import { DIMENSION_MAX } from "$lib/domain/types";
   import {
@@ -6,7 +9,12 @@
     type LabState,
     type Target,
   } from "$lib/state/lab.svelte";
-  import { HATCH_PATTERN_ID, netFill, netStroke } from "$lib/ui/colors";
+  import {
+    HATCH_PATTERN_ID,
+    chipTint,
+    netFill,
+    netStroke,
+  } from "$lib/ui/colors";
   import { fitFraction, gridLayers, gridScale } from "$lib/ui/grid";
   import { splitMath } from "$lib/ui/mathText";
   import {
@@ -78,6 +86,36 @@
   const sizeTextSize = $derived(layout.pixel * 13);
   const strokeWidth = $derived(layout.pixel * 1.5);
 
+  const areaUnit = $derived(UNITS[lab.unit].area);
+
+  /**
+   * One area chip per measured piece, laid over the net the way the badges are
+   * laid over the solid. The chip is positioned in CSS pixels, so the net's own
+   * units are mapped through the viewBox rather than drawn as SVG text.
+   */
+  const chips = $derived.by(() => {
+    return net.pieces.flatMap((piece, index) => {
+      const target = surfaceTarget(piece.surfaceId);
+      if (!lab.isActive(target)) return [];
+      const surface = surfaceOf(piece.surfaceId);
+      if (!surface) return [];
+      // Below the code and the size line the piece already carries.
+      const below = piece.labelAt[1] + codeSize * 0.95 + sizeTextSize * 2;
+      return [
+        {
+          key: index,
+          surface,
+          target,
+          tint: chipTint(lab.huesBySurfaceId[surface.id] ?? 0),
+          pinned: lab.isPinned(target),
+          value: formatExact(surface.exact),
+          x: ((piece.labelAt[0] - box.x) / box.w) * boxWidth,
+          y: ((below - box.y) / box.h) * boxHeight,
+        },
+      ];
+    });
+  });
+
   function surfaceOf(id: string) {
     return lab.model.surfaces.find((surface) => surface.id === id);
   }
@@ -142,6 +180,15 @@
       stale = true;
     };
   });
+
+  /**
+   * An open chip sits over the very piece it measures, so while it is only
+   * following the pointer it stays transparent to it. Once pinned it takes the
+   * pointer back, so clicking it can unpin it.
+   */
+  function reach(pinned: boolean): string {
+    return pinned ? "pointer-events-auto" : "pointer-events-none";
+  }
 
   /** The piece under an event, read straight off the markup. */
   function targetOf(event: Event): Target | null {
@@ -379,4 +426,50 @@
       </g>
     {/each}
   </svg>
+
+  <!-- The areas live above the drawing as real buttons, matching the badges on
+       the solid, so a measured piece reads the same in either view. -->
+  <div class="pointer-events-none absolute inset-0 overflow-hidden">
+    {#each chips as chip (chip.key)}
+      <button
+        type="button"
+        data-testid="net-surface-{chip.surface.localId}"
+        data-target={chip.target}
+        aria-pressed={chip.pinned}
+        aria-label="{chip.surface.name}{lab.showFormulas
+          ? `, ${chip.surface.formula}`
+          : ''}{lab.answersVisible ? `, ${chip.value} ${areaUnit}` : ''}"
+        class="absolute max-w-[14rem] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-lg border px-2 py-1 text-left font-mono text-xs leading-tight shadow-lg shadow-ink/20 backdrop-blur-sm {reach(
+          chip.pinned,
+        )}"
+        style:left="{chip.x}px"
+        style:top="{chip.y}px"
+        style:border-color={chip.tint.border}
+        style:background={chip.tint.background}
+        style:color={chip.tint.text}
+        style:outline={chip.pinned
+          ? `2px solid ${chip.tint.border}`
+          : undefined}
+        style:outline-offset="2px"
+        onclick={() => lab.togglePin(chip.target)}
+      >
+        <span class="block font-sans font-bold"
+          >{chip.surface.code} · {chip.surface.name}{#if lab.showFormulas}
+            · <MathText text={chip.surface.formula} />
+          {/if}</span
+        >
+        <span class="block" data-testid="net-face-value-{chip.surface.localId}">
+          {#if lab.showFormulas}<MathText text={chip.surface.substitution} /> ={:else}={/if}
+          {#if lab.answersVisible}
+            <strong><MathText text={chip.value} /></strong>
+            {areaUnit}
+          {:else}
+            <span data-testid="net-face-value-{chip.surface.localId}-hidden"
+              >?</span
+            >
+          {/if}
+        </span>
+      </button>
+    {/each}
+  </div>
 </div>
