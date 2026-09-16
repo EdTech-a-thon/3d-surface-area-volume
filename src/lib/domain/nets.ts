@@ -286,24 +286,72 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
     case "logoSlab": {
       const { m, r, b, h } = d;
       const slant = Math.hypot(h, b);
+      const topReach = m / 2 + r;
+      const bottomReach = m / 2 + r + b;
+      const gap = Math.max(1, slant * 0.6);
       const pieces: NetPiece[] = [];
 
-      // Each straight bevel face is still a rectangle: both parallel edges are
-      // m long, and their perpendicular separation on the face is the slant t.
+      // Lay the two faces beside one another like parts on a workbench. Keeping
+      // them off the side strip avoids a long top-strip-bottom silhouette and
+      // makes the larger footprint immediately visible next to the smaller top.
+      const topCenter: Vec2 = [topReach, topReach];
+      const topPoints = tilePolygon(topCenter[0], topCenter[1], m, r);
+      pieces.push({
+        shape: "polygon",
+        surfaceId: id("top"),
+        sizeText: `straight side ${dec(m)}, radius ${dec(r)}`,
+        labelAt: topCenter,
+        points: topPoints,
+      });
+
+      const bottomCenter: Vec2 = [
+        2 * topReach + gap + bottomReach,
+        bottomReach,
+      ];
+      const bottomPoints = tilePolygon(
+        bottomCenter[0],
+        bottomCenter[1],
+        m,
+        r + b,
+      );
+      pieces.push({
+        shape: "polygon",
+        surfaceId: id("bottom"),
+        sizeText: `straight side ${dec(m)}, radius ${dec(r + b)}`,
+        labelAt: bottomCenter,
+        points: bottomPoints,
+      });
+
+      // The four congruent straight bevel faces form a compact 2 × 2 swatch
+      // below the faces rather than one long strip.
+      const partsY = Math.max(2 * topReach, 2 * bottomReach) + gap;
       for (let k = 0; k < 4; k += 1) {
+        const column = k % 2;
+        const row = Math.floor(k / 2);
         pieces.push(
-          rectangle(id(`flat${k + 1}`), k * m, 0, m, slant, `${dec(m)} × t`),
+          rectangle(
+            id(`flat${k + 1}`),
+            column * (m + gap),
+            partsY + row * (slant + gap),
+            m,
+            slant,
+            `${dec(m)} × t`,
+          ),
         );
       }
 
       // The four rounded corners together are a complete conical frustum. Cut
-      // once and it opens into an annular sector. Similar triangles give the
-      // radii from the imaginary cone apex; its sweep makes the outer arc
-      // exactly the bottom circumference 2π(r + b).
+      // once and it opens into an annular sector. It sits beside the 2 × 2 side
+      // swatch, making the lower half of the layout another balanced pair.
       const innerRadius = (r * slant) / b;
       const outerRadius = ((r + b) * slant) / b;
       const sweepAngle = (2 * Math.PI * b) / slant;
-      const sectorApex: Vec2 = [4 * m + outerRadius + 1, slant / 2];
+      const sideBlockRight = 2 * m + gap;
+      const sideBlockHeight = 2 * slant + gap;
+      const sectorApex: Vec2 = [
+        sideBlockRight + gap + outerRadius,
+        partsY + sideBlockHeight / 2,
+      ];
       const startAngle = Math.PI - sweepAngle / 2;
       const middleAngle = startAngle + sweepAngle / 2;
       const middleRadius = (innerRadius + outerRadius) / 2;
@@ -322,26 +370,6 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
         ],
       });
 
-      // The top and bottom are separate pieces, as a cylinder's disks are. The
-      // larger bottom makes the keyboard-key taper explicit even while flat.
-      const topReach = m / 2 + r;
-      const bottomReach = m / 2 + r + b;
-      const topPoints = tilePolygon(m / 2, -topReach, m, r);
-      pieces.push({
-        shape: "polygon",
-        surfaceId: id("top"),
-        sizeText: `straight side ${dec(m)}, radius ${dec(r)}`,
-        labelAt: [m / 2, -topReach],
-        points: topPoints,
-      });
-      const bottomPoints = tilePolygon(m / 2, slant + bottomReach, m, r + b);
-      pieces.push({
-        shape: "polygon",
-        surfaceId: id("bottom"),
-        sizeText: `straight side ${dec(m)}, radius ${dec(r + b)}`,
-        labelAt: [m / 2, slant + bottomReach],
-        points: bottomPoints,
-      });
       return { pieces, bounds: boundsOf(pieces) };
     }
   }
