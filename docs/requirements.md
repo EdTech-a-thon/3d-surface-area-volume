@@ -14,7 +14,7 @@ The originating teacher request was for a rotating 3D shape app with editable le
 | Area | Decision |
 | --- | --- |
 | Primary use | Teacher-led classroom demonstration |
-| Solids | Rectangular prism, cube, right-triangular prism, cylinder, cone, sphere |
+| Solids | Rectangular prism, cube, right-triangular prism, square pyramid, cylinder, cone, sphere |
 | Manipulation | Rotatable 3D solids with editable relevant dimensions |
 | Calculation | Live formulas, substituted dimensions, and final results |
 | Answer reveal | Hide final numerical results only; formulas and substituted dimensions remain visible |
@@ -45,7 +45,7 @@ These are implementation recommendations, not separately confirmed requirements.
 
 ### Choose and resize a solid
 
-1. Select one of six solids.
+1. Select one of seven solids.
 2. Show only its relevant independent dimensions, with labels on the solid.
 3. Edit a number or use a range control.
 4. Update the solid's proportions, net, and calculations from the same validated geometry.
@@ -88,6 +88,7 @@ These are implementation recommendations, not separately confirmed requirements.
 - A 3 × 4 × 5 rectangular prism has surface area 94 square units and volume 60 cubic units.
 - A cube with side 2 has surface area 24 square units and volume 8 cubic units.
 - A right-triangular prism with legs 3 and 4 and prism length 5 has a hypotenuse of 5, surface area 72 square units, and volume 30 cubic units.
+- A square pyramid with base side 6 and perpendicular height 4 has slant height 5, surface area 96 square units, and volume 48 cubic units.
 - A cylinder with radius 2 and height 3 has surface area 20π square units and volume 12π cubic units.
 - A cone with radius 3 and perpendicular height 4 has slant height 5, surface area 24π square units, and volume 12π cubic units.
 - A sphere with radius 3 has surface area 36π square units and volume 36π cubic units; no exact net is offered.
@@ -104,7 +105,7 @@ Follow the workspace and project AGENTS.md files: Bun, TypeScript, SvelteKit, Ta
 Built as a single prerendered SvelteKit page.
 
 - `src/lib/domain/` holds the pure model: exact rational/radical/π arithmetic
-  (`rational.ts`, `exact.ts`), the six solids and their surface decomposition
+  (`rational.ts`, `exact.ts`), the seven picker solids and their surface decomposition
   (`solids.ts`), 3D meshes and measurable edges (`geometry3d.ts`), net layouts
   (`nets.ts`), input validation (`validation.ts`), and unit labels
   (`format.ts`). None of it imports Svelte, and it is covered by

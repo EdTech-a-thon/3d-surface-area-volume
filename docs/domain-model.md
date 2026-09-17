@@ -27,6 +27,7 @@ All dimensions are positive. Calculations use full precision internally; roundin
 | Rectangular prism | length l, width w, height h | None | 2(lw + lh + wh) | lwh |
 | Cube | side s | l = w = h = s | 6s² | s³ |
 | Right-triangular prism | perpendicular legs a and b, prism length p | hypotenuse c = √(a² + b²) | ab + p(a + b + c) | abp / 2 |
+| Square pyramid | base side b, perpendicular height h | face slant height s = √(h² + (b/2)²) | b² + 2bs | b²h / 3 |
 | Cylinder | radius r, perpendicular height h | circumference C = 2πr | 2πr² + 2πrh | πr²h |
 | Cone | radius r, perpendicular height h | slant height s = √(r² + h²) | πr² + πrs | πr²h / 3 |
 | Sphere | radius r | diameter d = 2r | 4πr² | 4πr³ / 3 |
@@ -42,6 +43,7 @@ Stable surface identifiers link the 3D representation, net pieces, and mathemati
 | Rectangular prism | top, bottom, front, back, left, right | Two lw, two lh, two wh |
 | Cube | top, bottom, front, back, left, right | Six s² |
 | Right-triangular prism | two triangular bases, leg-a rectangle, leg-b rectangle, hypotenuse rectangle | Two ab/2, ap, bp, cp |
+| Square pyramid | square base, front, back, left, and right triangular faces | b², four bs/2 |
 | Cylinder | top disk, bottom disk, curved side | πr², πr², 2πrh |
 | Cone | base disk, curved side | πr², πrs |
 | Sphere | curved surface | 4πr² |
@@ -58,6 +60,7 @@ All pieces in a net share one linear scale. Fitting the whole net into the viewp
 - **Rectangular prism:** Six rectangles joined along equal-length edges; opposite faces have equal dimensions. Choose a nonoverlapping standard cross arrangement.
 - **Cube:** Six congruent squares in a valid nonoverlapping cube net.
 - **Right-triangular prism:** A strip of three rectangles of widths a, b, and c and common length p; attach congruent right-triangle bases to appropriate opposite strip edges. Maintain correct edge correspondences and avoid overlapping pieces.
+- **Square pyramid:** One b-by-b square with four congruent base-b, altitude-s triangles, one joined to each edge.
 - **Cylinder:** One 2πr-by-h rectangle plus two radius-r disks. Show the circular pieces as separate net components with clearly associated joining boundaries; their curved edges do not share straight line segments with the rectangle in the plane.
 - **Cone:** One sector of radius s and central angle θ = 2πr/s radians, plus one radius-r base disk. Because h > 0, s > r and 0 < θ < 2π. The sector's arc length sθ = 2πr and area s²θ/2 = πrs. Lay out the base separately without overlap and associate its circumference with the sector arc.
 - **Sphere:** No net. Show an educational explanation rather than a fabricated flattened surface.
@@ -116,4 +119,4 @@ These do not alter the physical calculations. Switching shape clears incompatibl
 9. Rotation, highlighting, unit-label changes, and view changes do not alter numeric geometry.
 10. Hidden final answers do not appear in rendered text, accessibility descriptions, tooltips, or net labels. Formula substitutions intentionally remain visible.
 
-Test the pure geometry and exact-expression model independently from rendering. Browser tests should cover dimension edits and validation, all six shape selections and the unlisted logo solid, solid/net switching, surface selection, answer reveal persistence, keyboard rotation, and a narrow viewport.
+Test the pure geometry and exact-expression model independently from rendering. Browser tests should cover dimension edits and validation, all seven shape selections and the unlisted logo solid, solid/net switching, surface selection, answer reveal persistence, keyboard rotation, and a narrow viewport.

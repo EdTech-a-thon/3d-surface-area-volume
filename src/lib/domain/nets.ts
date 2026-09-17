@@ -6,7 +6,14 @@
  * its neighbours. Coordinates use SVG conventions: y grows downwards.
  */
 import { exactSqrt, formatExact } from "./exact";
-import { add, fromTenths, pow, toDecimalString } from "./rational";
+import {
+  add,
+  fromTenths,
+  mul,
+  pow,
+  rational,
+  toDecimalString,
+} from "./rational";
 import type { Dimensions, SolidKind } from "./types";
 
 export type Vec2 = readonly [number, number];
@@ -222,6 +229,67 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
         pieces,
         bounds: boundsOf(pieces),
       };
+    }
+    case "squarePyramid": {
+      const { b, h } = d;
+      const slant = Math.hypot(h, b / 2);
+      const faceText = `base ${dec(b)}, slant ${formatExact(
+        exactSqrt(
+          add(
+            pow(fromTenths(h), 2),
+            pow(mul(fromTenths(b), rational(1n, 2n)), 2),
+          ),
+        ),
+      )}`;
+      // A square with one congruent triangular face hinged to each edge.
+      const pieces: NetPiece[] = [
+        rectangle(id("base"), 0, 0, b, b, `${dec(b)} × ${dec(b)}`),
+        {
+          shape: "polygon",
+          surfaceId: id("back"),
+          sizeText: faceText,
+          points: [
+            [0, 0],
+            [b, 0],
+            [b / 2, -slant],
+          ],
+          labelAt: [b / 2, -slant / 3],
+        },
+        {
+          shape: "polygon",
+          surfaceId: id("front"),
+          sizeText: faceText,
+          points: [
+            [0, b],
+            [b, b],
+            [b / 2, b + slant],
+          ],
+          labelAt: [b / 2, b + slant / 3],
+        },
+        {
+          shape: "polygon",
+          surfaceId: id("left"),
+          sizeText: faceText,
+          points: [
+            [0, 0],
+            [0, b],
+            [-slant, b / 2],
+          ],
+          labelAt: [-slant / 3, b / 2],
+        },
+        {
+          shape: "polygon",
+          surfaceId: id("right"),
+          sizeText: faceText,
+          points: [
+            [b, 0],
+            [b, b],
+            [b + slant, b / 2],
+          ],
+          labelAt: [b + slant / 3, b / 2],
+        },
+      ];
+      return { pieces, bounds: boundsOf(pieces) };
     }
     case "cylinder": {
       const { r, h } = d;

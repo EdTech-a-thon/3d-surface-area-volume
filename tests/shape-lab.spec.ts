@@ -4,6 +4,7 @@ const SOLIDS = [
   { kind: "rectangularPrism", surfaceArea: "94", volume: "60" },
   { kind: "cube", surfaceArea: "24", volume: "8" },
   { kind: "triangularPrism", surfaceArea: "72", volume: "30" },
+  { kind: "squarePyramid", surfaceArea: "96", volume: "48" },
   { kind: "cylinder", surfaceArea: "20π", volume: "12π" },
   { kind: "cone", surfaceArea: "24π", volume: "12π" },
   { kind: "sphere", surfaceArea: "36π", volume: "36π" },
@@ -94,6 +95,13 @@ test("reports derived measurements as calculated, not editable", async ({
   await page.getByTestId("shape-triangularPrism").click();
   await expect(page.getByTestId("derived-c")).toContainText("c = √(3² + 4²)");
   await expect(page.getByTestId("input-c")).toHaveCount(0);
+
+  await page.getByTestId("shape-squarePyramid").click();
+  await expect(page.getByTestId("derived-s")).toContainText(
+    "s = √(4² + (6/2)²)",
+  );
+  await expect(page.getByTestId("derived-s")).toContainText("5");
+  await expect(page.getByTestId("input-s")).toHaveCount(0);
 });
 
 test("recalculates when a dimension changes", async ({ page }) => {

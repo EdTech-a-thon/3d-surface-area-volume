@@ -68,7 +68,7 @@
     class="pointer-events-none absolute top-2 left-2 z-20 flex items-start gap-1.5"
   >
     <BrandChip {lab} />
-    <div class="max-w-[9.5rem] sm:max-w-[17.5rem]">
+    <div class="max-w-[9.5rem] sm:max-w-[20rem]">
       <ShapeBar {lab} />
     </div>
   </div>

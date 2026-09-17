@@ -26,6 +26,9 @@
   {:else if kind === "triangularPrism"}
     <path d="M6 38h22L17 16z" />
     <path d="M17 16l10-8 11 22M28 38l10-8" />
+  {:else if kind === "squarePyramid"}
+    <path d="M24 6L6 34l18 8 18-8z" />
+    <path d="M24 6v36M6 34h36" />
   {:else if kind === "cylinder"}
     <ellipse cx="24" cy="13" rx="14" ry="5" />
     <path d="M10 13v22M38 13v22" />

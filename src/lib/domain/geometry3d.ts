@@ -299,6 +299,41 @@ export function buildMesh(kind: SolidKind, d: Dimensions): SolidMesh {
       ];
       return mesh(facets);
     }
+    case "squarePyramid": {
+      const { b, h } = d;
+      const halfBase = b / 2;
+      const halfHeight = h / 2;
+      const id = (local: string) => `${kind}:${local}`;
+      const apex: Vec3 = [0, halfHeight, 0];
+      return mesh([
+        facet(id("base"), [
+          [-halfBase, -halfHeight, -halfBase],
+          [halfBase, -halfHeight, -halfBase],
+          [halfBase, -halfHeight, halfBase],
+          [-halfBase, -halfHeight, halfBase],
+        ]),
+        facet(id("front"), [
+          [-halfBase, -halfHeight, halfBase],
+          [halfBase, -halfHeight, halfBase],
+          apex,
+        ]),
+        facet(id("back"), [
+          [-halfBase, -halfHeight, -halfBase],
+          [halfBase, -halfHeight, -halfBase],
+          apex,
+        ]),
+        facet(id("left"), [
+          [-halfBase, -halfHeight, -halfBase],
+          [-halfBase, -halfHeight, halfBase],
+          apex,
+        ]),
+        facet(id("right"), [
+          [halfBase, -halfHeight, -halfBase],
+          [halfBase, -halfHeight, halfBase],
+          apex,
+        ]),
+      ]);
+    }
     case "cylinder": {
       const { r, h } = d;
       const half = h / 2;
@@ -548,6 +583,53 @@ export function buildEdges(
       push("p", corner(0, 0, -hz), corner(0, 0, hz), [legA, legB]);
       push("p", corner(a, 0, -hz), corner(a, 0, hz), [legA, hypotenuse]);
       push("p", corner(0, b, -hz), corner(0, b, hz), [legB, hypotenuse]);
+      return edges;
+    }
+    case "squarePyramid": {
+      const { b, h } = d;
+      const halfBase = b / 2;
+      const halfHeight = h / 2;
+      const apex: Vec3 = [0, halfHeight, 0];
+      const corners: Vec3[] = [
+        [-halfBase, -halfHeight, -halfBase],
+        [halfBase, -halfHeight, -halfBase],
+        [halfBase, -halfHeight, halfBase],
+        [-halfBase, -halfHeight, halfBase],
+      ];
+      const sideNormals: Vec3[] = [
+        [0, halfBase, -h],
+        [h, halfBase, 0],
+        [0, halfBase, h],
+        [-h, halfBase, 0],
+      ];
+      const edges: MeasuredEdge[] = corners.map((point, index) => ({
+        id: `${kind}:edge:${index}`,
+        measure: "b",
+        a: point,
+        b: corners[(index + 1) % corners.length],
+        style: "edge",
+        normals: [[0, -1, 0], sideNormals[index]],
+        dashed: false,
+      }));
+      // These textbook construction lines distinguish perpendicular height
+      // from the slant height used by the triangular faces. Put the slant on
+      // whichever base edge faces the viewer so it never shows through a face.
+      const midpoints: Vec3[] = [
+        [0, -halfHeight, -halfBase],
+        [halfBase, -halfHeight, 0],
+        [0, -halfHeight, halfBase],
+        [-halfBase, -halfHeight, 0],
+      ];
+      const slantFoot = midpoints.reduce((front, candidate) =>
+        rotatePoint(candidate, yaw, pitch)[2] >
+        rotatePoint(front, yaw, pitch)[2]
+          ? candidate
+          : front,
+      );
+      edges.push(
+        line("h", [0, -halfHeight, 0], apex, true),
+        line("s", slantFoot, apex, false),
+      );
       return edges;
     }
     case "cylinder": {

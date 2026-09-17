@@ -281,6 +281,65 @@ function triangularPrism(dimensions: Dimensions): SolidModel {
   };
 }
 
+function squarePyramid(dimensions: Dimensions): SolidModel {
+  const kind: SolidKind = "squarePyramid";
+  const [baseSide, h] = [r(dimensions, "b"), r(dimensions, "h")];
+  const [bs, hs] = [dec(dimensions.b), dec(dimensions.h)];
+  const halfBase = mul(baseSide, HALF);
+  // The slant height runs from the apex to the midpoint of a base edge. It is
+  // the altitude of each triangular side, not the sloping corner edge.
+  const slant = exactSqrt(add(pow(halfBase, 2), pow(h, 2)));
+  const slantText = formatExact(slant);
+  const base = exactRational(pow(baseSide, 2));
+  const side = scaleExact(slant, mul(baseSide, HALF));
+
+  const surfaces: SurfaceTerm[] = [
+    makeSurface(kind, "base", "Square base", "B", "b²", `${bs}²`, base),
+    ...[
+      ["front", "Front triangular face", "F"],
+      ["back", "Back triangular face", "Bk"],
+      ["left", "Left triangular face", "L"],
+      ["right", "Right triangular face", "R"],
+    ].map(([localId, name, code]) =>
+      makeSurface(
+        kind,
+        localId,
+        name,
+        code,
+        "bs / 2",
+        `(${bs} × ${slantText}) / 2`,
+        side,
+      ),
+    ),
+  ];
+
+  return {
+    kind,
+    name: "Square pyramid",
+    dimensions,
+    derived: [
+      {
+        key: "s",
+        label: "Slant height s",
+        formula: "s = √(h² + (b/2)²)",
+        substitution: `s = √(${hs}² + (${bs}/2)²)`,
+        exact: slant,
+      },
+    ],
+    surfaces,
+    surfaceArea: {
+      formula: "SA = b² + 2bs",
+      substitution: `SA = ${bs}² + 2 × ${bs} × ${slantText}`,
+      exact: totalOf(surfaces),
+    },
+    volume: {
+      formula: "V = b²h / 3",
+      substitution: `V = (${bs}² × ${hs}) / 3`,
+      exact: exactRational(mul(mul(pow(baseSide, 2), h), THIRD)),
+    },
+  };
+}
+
 function cylinder(dimensions: Dimensions): SolidModel {
   const kind: SolidKind = "cylinder";
   const [radius, h] = [r(dimensions, "r"), r(dimensions, "h")];
@@ -605,6 +664,27 @@ export const SOLIDS: Record<SolidKind, SolidDefinition> = {
     defaults: { a: 3, b: 4, p: 5 },
     hasNet: true,
     build: triangularPrism,
+  },
+  squarePyramid: {
+    kind: "squarePyramid",
+    name: "Square pyramid",
+    shortName: "Square pyramid",
+    summary: "A square base joined to an apex by four triangular faces.",
+    dimensions: [
+      {
+        key: "b",
+        label: "Base side",
+        hint: "Length of each side of the square base",
+      },
+      {
+        key: "h",
+        label: "Height",
+        hint: "Perpendicular height from the base to the apex",
+      },
+    ],
+    defaults: { b: 6, h: 4 },
+    hasNet: true,
+    build: squarePyramid,
   },
   cylinder: {
     kind: "cylinder",

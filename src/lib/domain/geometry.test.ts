@@ -9,6 +9,7 @@ const SAMPLES: Record<SolidKind, Dimensions> = {
   rectangularPrism: { l: 3, w: 4, h: 5 },
   cube: { s: 2 },
   triangularPrism: { a: 3, b: 4, p: 5 },
+  squarePyramid: { b: 6, h: 4 },
   cylinder: { r: 2, h: 3 },
   cone: { r: 3, h: 4 },
   sphere: { r: 3 },
@@ -47,6 +48,13 @@ describe("acceptance examples", () => {
     expect(formatExact(model.derived[0].exact)).toBe("5");
     expect(formatExact(model.surfaceArea.exact)).toBe("72");
     expect(formatExact(model.volume.exact)).toBe("30");
+  });
+
+  it("computes a square pyramid with base side 6 and height 4", () => {
+    const model = buildSolid("squarePyramid", { b: 6, h: 4 });
+    expect(formatExact(model.derived[0].exact)).toBe("5");
+    expect(formatExact(model.surfaceArea.exact)).toBe("96");
+    expect(formatExact(model.volume.exact)).toBe("48");
   });
 
   it("computes a cylinder with radius 2 and height 3", () => {
@@ -304,6 +312,7 @@ describe("nets", () => {
       "rectangularPrism",
       "cube",
       "triangularPrism",
+      "squarePyramid",
     ] as const) {
       const net = buildNet(kind, SAMPLES[kind])!;
       const model = buildSolid(kind, SAMPLES[kind]);
@@ -327,6 +336,7 @@ describe("nets", () => {
       "rectangularPrism",
       "cube",
       "triangularPrism",
+      "squarePyramid",
     ] as const) {
       const net = buildNet(kind, SAMPLES[kind])!;
       const boxes = net.pieces.map((piece) => pieceBox(piece));

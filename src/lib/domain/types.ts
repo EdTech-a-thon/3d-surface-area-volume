@@ -4,6 +4,7 @@ export type SolidKind =
   | "rectangularPrism"
   | "cube"
   | "triangularPrism"
+  | "squarePyramid"
   | "cylinder"
   | "cone"
   | "sphere"
@@ -14,6 +15,7 @@ export const SOLID_ORDER: readonly SolidKind[] = [
   "rectangularPrism",
   "cube",
   "triangularPrism",
+  "squarePyramid",
   "cylinder",
   "cone",
   "sphere",
