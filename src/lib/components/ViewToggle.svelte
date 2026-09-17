@@ -1,7 +1,10 @@
 <script lang="ts">
-  import type { LabState } from "$lib/state/lab.svelte";
+  import type { LabState, ViewMode } from "$lib/state/lab.svelte";
 
-  let { lab }: { lab: LabState } = $props();
+  let {
+    lab,
+    onViewChange = (view) => lab.setView(view),
+  }: { lab: LabState; onViewChange?: (view: ViewMode) => void } = $props();
 
   const isNet = $derived(lab.view === "net");
   const tab =
@@ -22,7 +25,7 @@
     aria-checked={!isNet}
     data-testid="view-solid"
     class="{tab} {!isNet ? 'bg-accent text-white' : 'text-ink-soft'}"
-    onclick={() => lab.setView("solid")}>Solid</button
+    onclick={() => onViewChange("solid")}>Solid</button
   >
   <!-- A disabled button dispatches no pointer events of its own, so the reason
        the Net tab is greyed out has to be hung on something around it. The
@@ -41,7 +44,7 @@
       class="{tab} {isNet ? 'bg-accent text-white' : 'text-ink-soft'}"
       disabled={!lab.definition.hasNet}
       aria-describedby={lab.definition.hasNet ? undefined : "no-net-reason"}
-      onclick={() => lab.setView("net")}>Net</button
+      onclick={() => onViewChange("net")}>Net</button
     >
     {#if !lab.definition.hasNet}
       <!-- Always in the document, so the tab keeps something to point its

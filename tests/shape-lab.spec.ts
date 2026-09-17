@@ -164,6 +164,114 @@ test("switches between the solid and its net, and explains the sphere", async ({
     .toBeGreaterThan(100);
 });
 
+/** Where an element sits on the page, which is comparable across the views. */
+function placeOf(locator: Locator) {
+  return locator.first().evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return [box.x, box.y, box.width, box.height];
+  });
+}
+
+/**
+ * Watch the fold for the two frames at its very ends, from inside the page.
+ * Reading them afterwards would always be a frame or two late, and it is
+ * precisely the first and last frames that have to line up with the views
+ * either side of them.
+ */
+async function watchFoldEnds(page: Page, surfaceId: string) {
+  await page.evaluate((id) => {
+    const ends: Record<string, number[]> = {};
+    (window as unknown as { __foldEnds: typeof ends }).__foldEnds = ends;
+    const tick = () => {
+      const fold = document.querySelector("[data-testid=fold-view]");
+      const shut = fold?.getAttribute("data-closedness");
+      const piece = fold?.querySelector(`polygon[data-surface="${id}"]`);
+      if (piece && (shut === "1.000" || shut === "0.000")) {
+        const box = piece.getBoundingClientRect();
+        ends[shut] = [box.x, box.y, box.width, box.height];
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, surfaceId);
+
+  return async () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __foldEnds: Record<string, number[]> })
+          .__foldEnds,
+    );
+}
+
+function agreeWithin(a: number[], b: number[], slack: number) {
+  a.forEach((value, index) => expect(value).toBeCloseTo(b[index], slack));
+}
+
+test("folds the solid out into its net and back, from the pose it was left in", async ({
+  page,
+}) => {
+  await page.getByTestId("shape-cube").click();
+
+  // Turn the cube well away from its home view, so a fold that ignored the
+  // current pose would be obvious.
+  await page.getByTestId("solid-view").focus();
+  for (let press = 0; press < 4; press += 1)
+    await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowUp");
+
+  const ends = await watchFoldEnds(page, "cube:front");
+  const standing = await placeOf(face(page, "cube:front"));
+
+  await page.getByTestId("view-net").click();
+  await expect(page.getByTestId("fold-view")).toBeAttached();
+  await expect(page.getByTestId("net-view")).toBeVisible();
+  await expect(page.getByTestId("fold-view")).toHaveCount(0);
+  const flat = await placeOf(
+    page
+      .getByTestId("net-view")
+      .locator('g[data-target="surface:cube:front"] polygon'),
+  );
+
+  // Folding back up leaves the solid exactly as it was found.
+  await page.getByTestId("view-solid").click();
+  await expect(page.getByTestId("solid-view")).toBeVisible();
+  await expect(page.getByTestId("fold-view")).toHaveCount(0);
+  agreeWithin(await placeOf(face(page, "cube:front")), standing, 1);
+
+  // The fold starts on the solid and finishes on the net, to the pixel, so
+  // neither handover moves anything on screen.
+  const frames = await ends();
+  agreeWithin(frames["1.000"], standing, 1);
+  agreeWithin(frames["0.000"], flat, 1);
+});
+
+test("goes straight to the net when motion is not wanted", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ reducedMotion: "reduce" });
+  const page = await context.newPage();
+  await page.goto("/");
+  await expect(page.locator("[data-ready=true]")).toBeAttached();
+
+  await page.getByTestId("view-net").click();
+  await expect(page.getByTestId("net-view")).toBeVisible();
+  await expect(page.getByTestId("fold-view")).toHaveCount(0);
+  await context.close();
+});
+
+test("switches straight over for a shape whose net does not fold up", async ({
+  page,
+}) => {
+  // The logo tile is laid out as loose parts on a workbench rather than as one
+  // joined sheet, so there is no fold to show and it simply changes view.
+  await page.getByTestId("brand-toggle").click();
+  await expect(page.getByTestId("input-m")).toHaveValue("4");
+
+  await page.getByTestId("view-net").click();
+  await expect(page.getByTestId("net-view")).toBeVisible();
+  await expect(page.getByTestId("fold-view")).toHaveCount(0);
+});
+
 test("stops auto-rotation when a net is shown", async ({ page }) => {
   await page.getByTestId("toggle-spin").click();
   await expect(page.getByTestId("toggle-spin")).toHaveAttribute(

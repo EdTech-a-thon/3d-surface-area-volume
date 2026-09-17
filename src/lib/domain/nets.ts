@@ -196,15 +196,20 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
         exactSqrt(add(pow(fromTenths(a), 2), pow(fromTenths(b), 2))),
       );
       const triangleText = `legs ${dec(a)} and ${dec(b)}`;
+      // The strip runs leg a, leg b, hypotenuse, so going along it the right
+      // angle falls at the crease between the first two — which is where each
+      // end triangle's right angle has to sit for the net to fold up. Put it at
+      // the near corner instead and the net still draws correctly but cannot be
+      // assembled: the triangles come out mirrored against the strip.
       const front: readonly Vec2[] = [
         [0, 0],
         [a, 0],
-        [0, -b],
+        [a, -b],
       ];
       const back: readonly Vec2[] = [
         [0, p],
         [a, p],
-        [0, p + b],
+        [a, p + b],
       ];
       const pieces: NetPiece[] = [
         rectangle(id("faceA"), 0, 0, a, p, `${dec(a)} × ${dec(p)}`),

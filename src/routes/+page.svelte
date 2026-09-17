@@ -5,11 +5,12 @@
   import ShapeBar from "$lib/components/ShapeBar.svelte";
   import SolidView from "$lib/components/SolidView.svelte";
   import TotalsCard from "$lib/components/TotalsCard.svelte";
+  import FoldTransition from "$lib/components/FoldTransition.svelte";
   import ViewToggle from "$lib/components/ViewToggle.svelte";
   import BrandChip from "$lib/components/BrandChip.svelte";
   import { UNITS, UNIT_ORDER } from "$lib/domain/format";
   import type { UnitKey } from "$lib/domain/format";
-  import { LabState } from "$lib/state/lab.svelte";
+  import { LabState, type ViewMode } from "$lib/state/lab.svelte";
   import { onMount } from "svelte";
 
   const lab = new LabState();
@@ -17,6 +18,34 @@
   let reducedMotion = $state(false);
   /** Flipped once the page is live in the browser; nothing responds before that. */
   let ready = $state(false);
+  /** Which way the sheet is moving while a fold is running, if one is. */
+  let folding = $state<"open" | "close" | null>(null);
+  let foldingKind = $state(lab.kind);
+
+  function changeView(view: ViewMode) {
+    if (view === lab.view || reducedMotion || !lab.net) {
+      folding = null;
+      lab.setView(view);
+      return;
+    }
+    // Switch the view straight away — the tab, the spin button and the reading
+    // panels all belong to where we are going. Only the drawing lags behind,
+    // folding from the one to the other.
+    const way = view === "net" ? "open" : "close";
+    lab.setView(view);
+    foldingKind = lab.kind;
+    folding = way;
+  }
+
+  function finishFolding() {
+    folding = null;
+  }
+
+  $effect(() => {
+    // Picking another solid mid-fold should never leave the old one's faces
+    // over the new drawing.
+    if (folding && lab.kind !== foldingKind) folding = null;
+  });
 
   onMount(() => {
     ready = true;
@@ -26,7 +55,10 @@
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const apply = () => {
       reducedMotion = motion.matches;
-      if (reducedMotion) lab.autoRotate = false;
+      if (reducedMotion) {
+        lab.autoRotate = false;
+        folding = null;
+      }
     };
     apply();
     motion.addEventListener("change", apply);
@@ -47,7 +79,19 @@
   <h1 class="sr-only">Shape Lab</h1>
 
   <div class="absolute inset-0">
-    {#if lab.view === "net" && lab.net}
+    {#if folding && lab.net}
+      <!-- While the sheet is moving it is the whole drawing: it starts where the
+           view it came from left off and lands exactly where the view taking
+           over will draw it. Inert, since it is only a picture of the change. -->
+      <div class="pointer-events-none absolute inset-0" inert>
+        <FoldTransition
+          {lab}
+          net={lab.net}
+          direction={folding}
+          onComplete={finishFolding}
+        />
+      </div>
+    {:else if lab.view === "net" && lab.net}
       <NetView {lab} net={lab.net} />
     {:else}
       <SolidView {lab} {reducedMotion} />
@@ -79,7 +123,7 @@
   <div
     class="pointer-events-none absolute top-2 right-2 z-20 flex max-w-[7.5rem] flex-wrap justify-end gap-1.5 sm:max-w-none"
   >
-    <ViewToggle {lab} />
+    <ViewToggle {lab} onViewChange={changeView} />
     <label class="sr-only" for="unit-select">Units</label>
     <select
       id="unit-select"
