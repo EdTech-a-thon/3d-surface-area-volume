@@ -42,7 +42,7 @@
     font-weight: 800;
     text-align: center;
     transform: translateX(-50%);
-    animation: rebrand-notice 10.8s ease-in-out forwards;
+    animation: rebrand-notice 6s ease-in-out forwards;
   }
 
   p {
