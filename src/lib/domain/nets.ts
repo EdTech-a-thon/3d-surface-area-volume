@@ -238,7 +238,11 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
     case "squarePyramid": {
       const { b, h } = d;
       const slant = Math.hypot(h, b / 2);
-      const faceText = `base ${dec(b)}, slant ${formatExact(
+      // Two lines, not one. Four congruent faces all carry this text, and the
+      // two lying either side of the base carry it across the net's narrowest
+      // part; on one line they reach over the square between them and collide
+      // with its own label. See NetView for how a line break is drawn.
+      const faceText = `base ${dec(b)}\nslant ${formatExact(
         exactSqrt(
           add(
             pow(fromTenths(h), 2),

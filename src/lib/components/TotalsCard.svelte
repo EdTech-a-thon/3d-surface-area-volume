@@ -27,12 +27,34 @@
       // A hand-sized window shrinks its furniture before it shrinks the answer.
       (compact ? " max-[26rem]:h-7 max-[26rem]:w-7" : ""),
   );
-  /** The answer itself, which is the last thing to give up any room. */
+  /**
+   * The answer itself, which is the last thing to give up any room — and the
+   * one thing whose width the window cannot predict. "96" and "36 + 12√73" are
+   * both surface areas, and set at the same size the second takes two thirds of
+   * a floating window on its own. So in a floating window the answer is set to
+   * suit its own length: a plain number keeps the full size, and a sum with a
+   * root in it comes down a step or two rather than pushing the panel out.
+   */
+  function readoutClass(longest: number): string {
+    if (!compact) return `${READOUT} text-xl`;
+    if (longest > 14) return `${READOUT} text-sm`;
+    if (longest > 8) return `${READOUT} text-base max-[26rem]:text-sm`;
+    return `${READOUT} text-xl max-[26rem]:text-base [@media(max-height:26rem)]:text-base`;
+  }
+  const READOUT = "font-mono leading-tight font-bold";
+  /**
+   * Both answers are set to suit the longer of the two, so the surface area and
+   * the volume are always the same size as each other: they are one reading of
+   * the same solid, and a panel that sets them differently looks broken rather
+   * than considerate.
+   */
   const readout = $derived(
-    "font-mono text-xl leading-tight font-bold" +
-      (compact
-        ? " max-[26rem]:text-base [@media(max-height:26rem)]:text-base"
-        : ""),
+    readoutClass(
+      Math.max(
+        formatExact(lab.model.surfaceArea.exact).length,
+        formatExact(lab.model.volume.exact).length,
+      ),
+    ),
   );
   const unitText = $derived(
     "text-xs font-normal text-ink-soft" +
@@ -58,6 +80,7 @@
   testid: string,
 )}
   {@const value = evalExact(calculation.exact)}
+  {@const exact = formatExact(calculation.exact)}
   <div class="flex items-baseline gap-2">
     <span
       class="w-6 shrink-0 font-mono text-sm font-bold text-ink-soft {compact
@@ -66,7 +89,7 @@
     >
     {#if lab.answersVisible}
       <span class={readout} data-testid={testid}>
-        <MathText text={formatExact(calculation.exact)} />
+        <MathText text={exact} />
         <span class={unitText}>{unitLabel}</span>
         <Approximation {value} class={approxText} testid="{testid}-approx" />
       </span>

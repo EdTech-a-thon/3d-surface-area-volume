@@ -536,6 +536,61 @@ test("keeps long working inside its panel in a floating window", async ({
   await expect(floatingPage.getByTestId("input-b")).toBeVisible();
 });
 
+test("keeps a pyramid's face labels apart, and its answer in its panel", async ({
+  page,
+  context,
+}) => {
+  const floatingPagePromise = context.waitForEvent("page");
+  await page.getByTestId("toggle-float").click();
+  const floatingPage = await floatingPagePromise;
+  await floatingPage.getByTestId("solid-view").waitFor();
+  await floatingPage.setViewportSize({ width: 455, height: 515 });
+  await floatingPage.getByTestId("shape-picker").click();
+  await floatingPage.getByTestId("shape-squarePyramid").click();
+  // A slant height of √73: the longest thing any net says, on all four faces.
+  await floatingPage.getByTestId("input-h").fill("8");
+
+  // Both answers are set to the same size as each other, and the panel holding
+  // them keeps to its side of the window however long the exact answer runs.
+  const sizeOf = (testid: string) =>
+    floatingPage
+      .getByTestId(testid)
+      .evaluate((node) => getComputedStyle(node).fontSize);
+  expect(await sizeOf("surface-total")).toBe(await sizeOf("volume-total"));
+  const card = (await floatingPage.getByLabel("Totals").boundingBox())!;
+  expect(card.width).toBeLessThan(455 * 0.62);
+
+  // Smaller again, where the net is drawn small against labels that are not:
+  // this is the size at which one line per face used to write over the next.
+  await floatingPage.setViewportSize({ width: 360, height: 420 });
+  await floatingPage.getByTestId("view-net").click();
+  await expect(floatingPage.getByTestId("net-view")).toBeVisible();
+  await floatingPage.waitForTimeout(1200);
+
+  // Every piece says its size without writing over what the piece next to it
+  // says: the four faces meet at the narrowest part of this net, which is why
+  // their label is set on two lines rather than one.
+  const overlaps = await floatingPage.evaluate(() => {
+    const boxes = [
+      ...document.querySelectorAll("[data-testid='net-view'] text"),
+    ].map((text) => text.getBoundingClientRect());
+    const hits: string[] = [];
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        const a = boxes[i];
+        const b = boxes[j];
+        const across = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        const down = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        // Haloed text can sit shoulder to shoulder; what counts as a collision
+        // is one label reaching well into the body of another.
+        if (across > 4 && down > 4) hits.push(`${i}×${j}`);
+      }
+    }
+    return hits;
+  });
+  expect(overlaps).toEqual([]);
+});
+
 test("keeps the labels on the shape when the floating window is resized", async ({
   page,
   context,

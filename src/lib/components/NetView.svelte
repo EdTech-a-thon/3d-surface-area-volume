@@ -135,6 +135,18 @@
   const sizeTextSize = $derived(layout.pixel * 13);
   const strokeWidth = $derived(layout.pixel * 1.5);
 
+  /**
+   * A piece says its size on one line unless the text asks for more. Only the
+   * pyramid does: its four faces are the longest label in any net, and they are
+   * read where the net is at its narrowest. Every square root is drawn per
+   * line, so a break costs the signs nothing.
+   */
+  function sizeLines(text: string): string[] {
+    return text.split("\n");
+  }
+  /** Line spacing for a size label that runs to more than one line. */
+  const LINE_STEP = 1.2;
+
   const areaUnit = $derived(
     compact ? unitLabels(lab.unit).areaShort : unitLabels(lab.unit).area,
   );
@@ -150,8 +162,11 @@
       if (!lab.isActive(target)) return [];
       const surface = surfaceOf(piece.surfaceId);
       if (!surface) return [];
-      // Below the code and the size line the piece already carries.
-      const below = piece.labelAt[1] + codeSize * 0.95 + sizeTextSize * 2;
+      // Below the code and the size lines the piece already carries.
+      const below =
+        piece.labelAt[1] +
+        codeSize * 0.95 +
+        sizeTextSize * (2 + (sizeLines(piece.sizeText).length - 1) * LINE_STEP);
       return [
         {
           key: index,
@@ -417,22 +432,26 @@
           fill="#0b1a22"
           pointer-events="none">{surface?.code ?? ""}</text
         >
-        <text
-          x={piece.labelAt[0]}
-          y={piece.labelAt[1] + codeSize * 0.95}
-          class="label-halo"
-          font-size={sizeTextSize}
-          stroke-width={sizeTextSize * 0.35}
-          text-anchor="middle"
-          dominant-baseline="central"
-          fill="#334155"
-          pointer-events="none"
-          >{#each splitMath(piece.sizeText) as segment, index (index)}{#if segment.kind === "radical"}<tspan
-                class="net-radicand"
-                dx={signGap}>{segment.radicand}</tspan
-              ><tspan dx={sizeTextSize * 0.12}>&#8203;</tspan
-              >{:else}{segment.text}{/if}{/each}</text
-        >
+        {#each sizeLines(piece.sizeText) as line, lineIndex (lineIndex)}
+          <text
+            x={piece.labelAt[0]}
+            y={piece.labelAt[1] +
+              codeSize * 0.95 +
+              lineIndex * sizeTextSize * LINE_STEP}
+            class="label-halo"
+            font-size={sizeTextSize}
+            stroke-width={sizeTextSize * 0.35}
+            text-anchor="middle"
+            dominant-baseline="central"
+            fill="#334155"
+            pointer-events="none"
+            >{#each splitMath(line) as segment, index (index)}{#if segment.kind === "radical"}<tspan
+                  class="net-radicand"
+                  dx={signGap}>{segment.radicand}</tspan
+                ><tspan dx={sizeTextSize * 0.12}>&#8203;</tspan
+                >{:else}{segment.text}{/if}{/each}</text
+          >
+        {/each}
       </g>
     {/each}
 
