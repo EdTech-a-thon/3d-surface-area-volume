@@ -469,6 +469,56 @@ test("keeps the view controls level with the panels for as long as they fit", as
   );
 });
 
+test("floats validation errors without moving the floating controls", async ({
+  page,
+  context,
+}) => {
+  const floatingPagePromise = context.waitForEvent("page");
+  await page.getByTestId("toggle-float").click();
+  const floatingPage = await floatingPagePromise;
+  await floatingPage.getByTestId("solid-view").waitFor();
+  await floatingPage.setViewportSize({ width: 420, height: 440 });
+
+  const place = async (testid: string) => {
+    const box = (await floatingPage.getByTestId(testid).boundingBox())!;
+    return [box.x, box.y, box.width, box.height].map(Math.round);
+  };
+  const dimensions = floatingPage.getByLabel(/Dimensions/);
+  const panelBefore = (await dimensions.boundingBox())!;
+  const totalsBefore = await place("surface-total");
+  const controlsBefore = await place("toggle-spin");
+
+  // Clearing a box is a normal part of replacing its value. The complaint is a
+  // bubble above the panel, not another row inside it, so none of the furniture
+  // jumps while the draft is briefly invalid.
+  await floatingPage.getByTestId("input-l").fill("");
+  await expect(floatingPage.getByTestId("error-l")).toBeVisible();
+  await expect(floatingPage.getByTestId("error-l")).toContainText(
+    "Enter a number",
+  );
+  const panelAfter = (await dimensions.boundingBox())!;
+  expect([
+    panelAfter.x,
+    panelAfter.y,
+    panelAfter.width,
+    panelAfter.height,
+  ].map(Math.round)).toEqual(
+    [
+      panelBefore.x,
+      panelBefore.y,
+      panelBefore.width,
+      panelBefore.height,
+    ].map(Math.round),
+  );
+  expect(await place("surface-total")).toEqual(totalsBefore);
+  expect(await place("toggle-spin")).toEqual(controlsBefore);
+
+  // A valid replacement dismisses the bubble and updates the model normally.
+  await floatingPage.getByTestId("input-l").fill("6");
+  await expect(floatingPage.getByTestId("error-l")).toHaveCount(0);
+  await expect(floatingPage.getByTestId("surface-total")).toContainText("148");
+});
+
 test("keeps long working inside its panel in a floating window", async ({
   page,
   context,
