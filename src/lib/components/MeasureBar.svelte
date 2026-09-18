@@ -2,30 +2,59 @@
   import Approximation from "$lib/components/Approximation.svelte";
   import MathText from "$lib/components/MathText.svelte";
   import { evalExact, formatExact } from "$lib/domain/exact";
-  import { UNITS } from "$lib/domain/format";
   import {
     DIMENSION_MAX,
     DIMENSION_MIN,
     DIMENSION_STEP,
     DIMENSION_TYPED_MAX,
   } from "$lib/domain/types";
+  import {
+    domainText,
+    t,
+    unitLabels,
+    validationMessage,
+  } from "$lib/i18n/index.svelte";
   import { measureTarget, type LabState } from "$lib/state/lab.svelte";
 
-  let { lab }: { lab: LabState } = $props();
+  let {
+    lab,
+    compact = false,
+  }: {
+    lab: LabState;
+    /**
+     * Fit a floating window. The dimensions run across the panel instead of
+     * down it, so a solid with four of them costs one or two short rows rather
+     * than four tall ones, and the slider — the widest control here, and the
+     * one the typed box already covers — stands down.
+     */
+    compact?: boolean;
+  } = $props();
 
-  const linear = $derived(UNITS[lab.unit].linear);
+  const linear = $derived(unitLabels(lab.unit).linear);
 
   const step =
     "grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-md border border-rule bg-panel text-base leading-none font-bold text-ink-soft hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-30";
+  /**
+   * Once the window is too narrow to hold a whole row, the two nudge buttons
+   * are the part that goes: the typed box beside them does the same job, and
+   * the shape needs the room more than they do.
+   */
+  const stepClass = $derived(compact ? `${step} max-[30rem]:hidden` : step);
 </script>
 
 <!-- The dimensions are always on screen: they are what the whole demonstration
      varies. Pointing at a symbol lights up every edge that carries it. -->
 <section
-  class="pointer-events-auto rounded-xl border border-rule/70 bg-panel/90 p-2 shadow-lg shadow-ink/10 backdrop-blur-md"
-  aria-label="Dimensions, in {linear}"
+  class="pointer-events-auto min-w-0 rounded-xl border border-rule/70 bg-panel/90 p-2 shadow-lg shadow-ink/10 backdrop-blur-md {compact
+    ? 'max-h-[42dvh] overflow-y-auto max-[26rem]:p-1.5 [@media(max-height:26rem)]:p-1.5'
+    : ''}"
+  aria-label={t("measure.dimensions", { unit: linear })}
 >
-  <div class="flex flex-col gap-1.5">
+  <div
+    class={compact
+      ? "flex max-w-[min(21rem,56vw)] flex-wrap items-center gap-x-3 gap-y-1 max-[26rem]:gap-x-2"
+      : "flex flex-col gap-1.5"}
+  >
     {#each lab.definition.dimensions as spec (spec.key)}
       {@const error = lab.errors[spec.key]}
       {@const target = measureTarget(spec.key)}
@@ -34,11 +63,14 @@
           type="button"
           data-testid="measure-{spec.key}"
           aria-pressed={lab.isPinned(target)}
-          aria-label="{spec.label}. {spec.hint}. Show it on the shape."
-          title="{spec.label} — {spec.hint}"
-          class="h-7 w-7 shrink-0 cursor-pointer rounded-md border font-mono text-sm font-bold transition {lab.isActive(
-            target,
-          )
+          aria-label={t("measure.show", {
+            label: domainText(spec.label),
+            hint: domainText(spec.hint),
+          })}
+          title="{domainText(spec.label)} — {domainText(spec.hint)}"
+          class="h-7 w-7 shrink-0 cursor-pointer rounded-md border font-mono text-sm font-bold transition {compact
+            ? 'max-[26rem]:h-6 max-[26rem]:w-6'
+            : ''} {lab.isActive(target)
             ? 'border-flag bg-flag-soft text-flag'
             : 'border-transparent text-ink-soft hover:border-accent hover:text-accent'}"
           onpointerenter={() => lab.hover(target)}
@@ -50,22 +82,28 @@
 
         <button
           type="button"
-          class={step}
-          aria-label="Decrease {spec.label} by {DIMENSION_STEP}"
+          class={stepClass}
+          aria-label={t("measure.decrease", {
+            label: domainText(spec.label),
+            step: DIMENSION_STEP,
+          })}
           data-testid="decrease-{spec.key}"
           disabled={lab.dimensions[spec.key] <= DIMENSION_MIN}
           onclick={() => lab.nudgeDimension(spec.key, -DIMENSION_STEP)}
           >−</button
         >
         <label class="sr-only" for="dimension-{spec.key}"
-          >{spec.label} in {linear}</label
+          >{t("measure.inUnit", {
+            label: domainText(spec.label),
+            unit: linear,
+          })}</label
         >
         <input
           id="dimension-{spec.key}"
           data-testid="input-{spec.key}"
-          class="w-16 shrink-0 rounded-md border bg-panel px-1 py-0.5 text-center font-mono text-base {error
-            ? 'border-flag'
-            : 'border-rule'}"
+          class="shrink-0 rounded-md border bg-panel px-1 py-0.5 text-center font-mono {compact
+            ? 'w-12 text-sm max-[26rem]:w-10 max-[26rem]:text-xs'
+            : 'w-16 text-base'} {error ? 'border-flag' : 'border-rule'}"
           type="text"
           inputmode="decimal"
           autocomplete="off"
@@ -76,8 +114,11 @@
         />
         <button
           type="button"
-          class={step}
-          aria-label="Increase {spec.label} by {DIMENSION_STEP}"
+          class={stepClass}
+          aria-label={t("measure.increase", {
+            label: domainText(spec.label),
+            step: DIMENSION_STEP,
+          })}
           data-testid="increase-{spec.key}"
           disabled={lab.dimensions[spec.key] >= DIMENSION_TYPED_MAX}
           onclick={() => lab.nudgeDimension(spec.key, DIMENSION_STEP)}>+</button
@@ -86,13 +127,16 @@
              value may be far larger; the handle then rests at the top of the
              slider until it is dragged back into that range. -->
         <input
-          class="hidden w-28 accent-accent sm:block"
+          class={compact ? "hidden" : "hidden w-28 accent-accent sm:block"}
           type="range"
           min={DIMENSION_MIN}
           max={DIMENSION_MAX}
           step={DIMENSION_STEP}
           data-testid="range-{spec.key}"
-          aria-label="{spec.label} slider, in {linear}"
+          aria-label={t("measure.slider", {
+            label: domainText(spec.label),
+            unit: linear,
+          })}
           value={Math.min(lab.dimensions[spec.key], DIMENSION_MAX)}
           oninput={(event) => lab.setDraft(spec.key, event.currentTarget.value)}
         />
@@ -105,8 +149,11 @@
           role="alert"
           class="max-w-[17rem] rounded bg-flag-soft px-2 py-1 text-xs font-semibold text-flag"
         >
-          {error}. Still {lab.dimensions[spec.key]}
-          {linear}.
+          {t("measure.still", {
+            message: validationMessage(error),
+            value: lab.dimensions[spec.key],
+            unit: linear,
+          })}
         </p>
       {/if}
     {/each}
@@ -118,7 +165,9 @@
     {@const value = evalExact(derived.exact)}
     {@const exact = formatExact(derived.exact)}
     <p
-      class="mt-1.5 border-t border-rule/60 pt-1.5 font-mono text-xs text-ink-soft"
+      class="mt-1.5 border-t border-rule/60 pt-1.5 font-mono text-xs text-ink-soft {compact
+        ? '[@media(max-height:26rem)]:hidden'
+        : ''}"
       data-testid="derived-{derived.key}"
     >
       <!-- "l = w = h = 2" already ends in its own value; "s = √(3² + 4²)" does not. -->

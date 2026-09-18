@@ -1,11 +1,7 @@
 <script lang="ts">
   import MathText from "$lib/components/MathText.svelte";
   import { evalExact, formatExact } from "$lib/domain/exact";
-  import {
-    UNITS,
-    approximateText,
-    formatApproximate,
-  } from "$lib/domain/format";
+  import { approximateText, formatApproximate } from "$lib/domain/format";
   import {
     centroid,
     normalOf,
@@ -15,6 +11,7 @@
     type Vec3,
   } from "$lib/domain/geometry3d";
   import { DIMENSION_MAX } from "$lib/domain/types";
+  import { domainText, t, unitLabels } from "$lib/i18n/index.svelte";
   import {
     measureTarget,
     surfaceTarget,
@@ -31,18 +28,34 @@
   } from "$lib/ui/logoMark";
   import { floorPlane, floorRules } from "$lib/ui/floor";
   import { fitFraction, gridLayers, gridScale } from "$lib/ui/grid";
+  import { measureBox } from "$lib/ui/measureBox";
+  import { stageRise, stageRoom } from "$lib/ui/stage";
 
   let {
     lab,
     reducedMotion = false,
     animationWindow,
     compact = false,
+    lift = 0,
+    chrome = 0,
   }: {
     lab: LabState;
     reducedMotion?: boolean;
     animationWindow?: Window;
     /** Shorten the unit words where the window has no room for them. */
     compact?: boolean;
+    /**
+     * How far above the middle to hold the shape, in CSS pixels. The panels
+     * along the bottom edge take more room than the top row does, so the caller
+     * measures the difference and the shape sits in what is left over.
+     */
+    lift?: number;
+    /**
+     * How much of the height the panels over the drawing have taken, top and
+     * bottom together, in CSS pixels. The shape is fitted to what is left, so a
+     * window shrunk around it gives up shape rather than burying it.
+     */
+    chrome?: number;
   } = $props();
 
   const LIGHT: Vec3 = [-0.32, 0.66, 0.68];
@@ -54,10 +67,18 @@
   let boxHeight = $state(650);
   const halfWidth = $derived(Math.max(boxWidth, 1) / 2);
   const halfHeight = $derived(Math.max(boxHeight, 1) / 2);
+  /** Never so far up that the shape leaves the top of the window. See stage.ts. */
+  const rise = $derived(stageRise(boxHeight, lift));
+  /** Half the height the shape may be fitted to, once the panels have theirs. */
+  const room = $derived(stageRoom(boxHeight, chrome));
+  /** Where the middle of the shape lands, measured down from the top edge. */
+  const centerY = $derived(halfHeight - rise);
   /** The extent of the largest solid the sliders reach: a sphere of radius 20. */
   const FULL_EXTENT = DIMENSION_MAX;
   const scale = $derived(
-    (Math.min(halfWidth, halfHeight) *
+    // The fit is measured against the clear band, not the window, so the solid
+    // grows into the room it actually has.
+    (Math.min(halfWidth, room) *
       0.78 *
       fitFraction(lab.mesh.extent, FULL_EXTENT)) /
       lab.mesh.extent,
@@ -108,9 +129,9 @@
     ].filter((layer) => layer.ink > 0.004),
   );
 
-  const linear = $derived(UNITS[lab.unit].linear);
+  const linear = $derived(unitLabels(lab.unit).linear);
   const areaUnit = $derived(
-    compact ? UNITS[lab.unit].areaShort : UNITS[lab.unit].area,
+    compact ? unitLabels(lab.unit).areaShort : unitLabels(lab.unit).area,
   );
 
   interface DrawnFacet {
@@ -262,7 +283,7 @@
           // the totals card, where there is room to explain it.
           value: formatExact(surface.exact),
           x: halfWidth + running.x / running.area,
-          y: halfHeight + running.y / running.area,
+          y: centerY + running.y / running.area,
         };
       });
   });
@@ -306,7 +327,7 @@
             ? `${approximateText(value)} ${linear}`
             : null,
           x: halfWidth + drawn.mid[0] * push,
-          y: halfHeight + drawn.mid[1] * push,
+          y: centerY + drawn.mid[1] * push,
         },
       ];
     });
@@ -445,11 +466,16 @@
   });
 
   const description = $derived(
-    `${lab.model.name} with ${lab.definition.dimensions
-      .map((spec) => `${spec.label.toLowerCase()} ${lab.dimensions[spec.key]}`)
-      .join(
-        ", ",
-      )} ${linear}. Drag or use the arrow keys to rotate. Point at a face or an edge to measure it.`,
+    t("solid.description", {
+      name: domainText(lab.model.name),
+      dimensions: lab.definition.dimensions
+        .map(
+          (spec) =>
+            `${domainText(spec.label).toLocaleLowerCase()} ${lab.dimensions[spec.key]}`,
+        )
+        .join(", "),
+      unit: linear,
+    }),
   );
 
   // The chip's colours are set per surface, so only the shape of it is shared.
@@ -480,15 +506,17 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="relative h-full w-full"
-  bind:clientWidth={boxWidth}
-  bind:clientHeight={boxHeight}
+  use:measureBox={(width, height) => {
+    boxWidth = width;
+    boxHeight = height;
+  }}
   onpointerleave={clearHover}
 >
   <svg
     class="h-full w-full touch-none select-none"
     class:cursor-grab={!dragging}
     class:cursor-grabbing={dragging}
-    viewBox="{-halfWidth} {-halfHeight} {halfWidth * 2} {halfHeight * 2}"
+    viewBox="{-halfWidth} {-centerY} {halfWidth * 2} {halfHeight * 2}"
     role="img"
     tabindex="0"
     aria-label={description}
@@ -515,7 +543,7 @@
         id={FLOOR_MASK_ID}
         maskUnits="userSpaceOnUse"
         x={-halfWidth}
-        y={-halfHeight}
+        y={-centerY}
         width={halfWidth * 2}
         height={halfHeight * 2}
       >
@@ -660,7 +688,7 @@
         type="button"
         data-testid="surface-{badge.surface.localId}"
         aria-pressed={badge.pinned}
-        aria-label="{badge.surface.name}{lab.showFormulas
+        aria-label="{domainText(badge.surface.name)}{lab.showFormulas
           ? `, ${badge.surface.formula}`
           : ''}{lab.answersVisible ? `, ${badge.value} ${areaUnit}` : ''}"
         class={badge.active
@@ -683,7 +711,9 @@
       >
         {#if badge.active}
           <span class="block font-sans font-bold"
-            >{badge.surface.code} · {badge.surface.name}{#if lab.showFormulas}
+            >{badge.surface.code} · {domainText(
+              badge.surface.name,
+            )}{#if lab.showFormulas}
               · <MathText text={badge.surface.formula} />
             {/if}</span
           >

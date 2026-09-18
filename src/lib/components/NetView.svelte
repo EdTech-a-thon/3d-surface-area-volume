@@ -1,9 +1,9 @@
 <script lang="ts">
   import MathText from "$lib/components/MathText.svelte";
   import { formatExact } from "$lib/domain/exact";
-  import { UNITS } from "$lib/domain/format";
   import { annularSectorPath, sectorPath, type Net } from "$lib/domain/nets";
   import { DIMENSION_MAX } from "$lib/domain/types";
+  import { domainText, t, unitLabels } from "$lib/i18n/index.svelte";
   import {
     surfaceTarget,
     type LabState,
@@ -17,6 +17,8 @@
   } from "$lib/ui/colors";
   import { fitFraction, gridLayers, gridScale } from "$lib/ui/grid";
   import { splitMath } from "$lib/ui/mathText";
+  import { measureBox } from "$lib/ui/measureBox";
+  import { stageRise, stageRoom } from "$lib/ui/stage";
   import {
     RADICAL_RULE_OVERLAP,
     RADICAL_RULE_WEIGHT,
@@ -31,11 +33,17 @@
     lab,
     net,
     compact = false,
+    lift = 0,
+    chrome = 0,
   }: {
     lab: LabState;
     net: Net;
     /** Shorten the unit words where the window has no room for them. */
     compact?: boolean;
+    /** How far above the middle to hold the net, in CSS pixels. */
+    lift?: number;
+    /** The height the panels over the net have taken, as the solid view sees it. */
+    chrome?: number;
   } = $props();
 
   // Every piece is already in the solid's length units, so one viewBox scales
@@ -57,7 +65,11 @@
     const pad = Math.max(width, height) * 0.07;
     const wanted = { w: width + pad * 2, h: height + pad * 2 };
 
-    const aspect = Math.max(boxWidth, 1) / Math.max(boxHeight, 1);
+    // Panels over the drawing take height from the net exactly as they do from
+    // the solid, so the sheet is laid out in the clear band between them and the
+    // viewBox is then stretched back over the whole element.
+    const band = stageRoom(boxHeight, chrome) * 2;
+    const aspect = Math.max(boxWidth, 1) / band;
     const fitted =
       wanted.w / wanted.h < aspect
         ? { w: wanted.h * aspect, h: wanted.h }
@@ -65,16 +77,21 @@
     // A small net is drawn small, exactly as a small solid is: widening the
     // viewBox past the net leaves it the same share of the screen its solid had.
     const zoom = fitFraction(Math.max(width, height) / 2, FULL_EXTENT);
-    const view = { w: fitted.w / zoom, h: fitted.h / zoom };
+    const spread = Math.max(boxHeight, 1) / band;
+    const view = { w: fitted.w / zoom, h: (fitted.h / zoom) * spread };
 
     const centerX = (net.bounds.minX + net.bounds.maxX) / 2;
     const centerY = (net.bounds.minY + net.bounds.maxY) / 2;
     // Length of one CSS pixel, in the net's own units.
     const pixel = view.w / Math.max(boxWidth, 1);
+    // The floating window keeps its panels along the bottom edge, so the net
+    // steps up out of their way exactly as the solid does. Moving the window
+    // down over the net is what lifts the net on screen.
+    const rise = stageRise(boxHeight, lift) * (view.h / Math.max(boxHeight, 1));
     return {
       box: {
         x: centerX - view.w / 2,
-        y: centerY - view.h / 2,
+        y: centerY - view.h / 2 + rise,
         w: view.w,
         h: view.h,
       },
@@ -96,7 +113,7 @@
   const strokeWidth = $derived(layout.pixel * 1.5);
 
   const areaUnit = $derived(
-    compact ? UNITS[lab.unit].areaShort : UNITS[lab.unit].area,
+    compact ? unitLabels(lab.unit).areaShort : unitLabels(lab.unit).area,
   );
 
   /**
@@ -218,15 +235,17 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
   class="relative h-full w-full"
-  bind:clientWidth={boxWidth}
-  bind:clientHeight={boxHeight}
+  use:measureBox={(width, height) => {
+    boxWidth = width;
+    boxHeight = height;
+  }}
 >
   <svg
     bind:this={svgEl}
     class="h-full w-full"
     {viewBox}
     role="img"
-    aria-label="Flat net of the {lab.model.name}"
+    aria-label={t("net.description", { name: domainText(lab.model.name) })}
     data-testid="net-view"
     onpointerover={(event) => lab.hover(targetOf(event))}
     onpointerleave={() => lab.hover(null)}
@@ -447,7 +466,7 @@
         data-testid="net-surface-{chip.surface.localId}"
         data-target={chip.target}
         aria-pressed={chip.pinned}
-        aria-label="{chip.surface.name}{lab.showFormulas
+        aria-label="{domainText(chip.surface.name)}{lab.showFormulas
           ? `, ${chip.surface.formula}`
           : ''}{lab.answersVisible ? `, ${chip.value} ${areaUnit}` : ''}"
         class="absolute max-w-[14rem] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-lg border px-2 py-1 text-left font-mono text-xs leading-tight shadow-lg shadow-ink/20 backdrop-blur-sm {reach(
@@ -465,7 +484,9 @@
         onclick={() => lab.togglePin(chip.target)}
       >
         <span class="block font-sans font-bold"
-          >{chip.surface.code} · {chip.surface.name}{#if lab.showFormulas}
+          >{chip.surface.code} · {domainText(
+            chip.surface.name,
+          )}{#if lab.showFormulas}
             · <MathText text={chip.surface.formula} />
           {/if}</span
         >

@@ -1,5 +1,6 @@
 <script lang="ts">
   import ShapeLab from "$lib/components/ShapeLab.svelte";
+  import { t } from "$lib/i18n/index.svelte";
   import { LabState } from "$lib/state/lab.svelte";
   import {
     copyStyles,
@@ -68,7 +69,7 @@
         height: 600,
         preferInitialWindowPlacement: false,
       });
-      pip.document.title = "Shape Lab";
+      pip.document.title = t("app.name");
       copyStyles(document, pip.document);
       pip.addEventListener(
         "pagehide",
@@ -97,16 +98,14 @@
       if (floatingApp) await removeFloatingApp();
       floatingWindow = null;
       pip?.close();
-      floatError =
-        error instanceof Error
-          ? error.message
-          : "The floating window could not be opened.";
+      floatError = error instanceof Error ? error.message : t("float.failed");
     }
   }
 </script>
 
 <svelte:head>
-  <title>Shape Lab — surface area and volume</title>
+  <title>{t("app.pageTitle")}</title>
+  <meta name="description" content={t("app.description")} />
 </svelte:head>
 
 {#if floatingWindow}
@@ -128,10 +127,9 @@
         <rect x="2.5" y="4" width="19" height="15" rx="2.5" />
         <rect x="12" y="10" width="7" height="6" rx="1" fill="currentColor" />
       </svg>
-      <h1 class="text-xl font-bold">Shape Lab is floating</h1>
+      <h1 class="text-xl font-bold">{t("floating.title")}</h1>
       <p class="mt-2 text-sm text-ink-soft">
-        Switch to the textbook tab and keep this tab open. Your work stays in
-        the floating window, and its back-to-tab button brings you here again.
+        {t("floating.instructions")}
       </p>
       <button
         type="button"
@@ -139,7 +137,7 @@
         class="mt-5 cursor-pointer rounded-xl bg-accent px-4 py-2 text-sm font-bold text-white shadow-md transition hover:brightness-110"
         onclick={closeFloatingWindow}
       >
-        Bring Shape Lab back here
+        {t("floating.return")}
       </button>
     </div>
   </main>

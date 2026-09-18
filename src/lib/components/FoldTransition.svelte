@@ -26,6 +26,8 @@
   import { facetFill, netFill, netStroke } from "$lib/ui/colors";
   import { fitFraction } from "$lib/ui/grid";
   import { onMount, untrack } from "svelte";
+  import { measureBox } from "$lib/ui/measureBox";
+  import { stageRise, stageRoom } from "$lib/ui/stage";
 
   let {
     lab,
@@ -33,6 +35,8 @@
     direction,
     onComplete,
     animationWindow,
+    lift = 0,
+    chrome = 0,
   }: {
     lab: LabState;
     net: Net;
@@ -41,6 +45,10 @@
     onComplete: () => void;
     /** Where the fold is being drawn, when that is not the page's own window. */
     animationWindow?: Window;
+    /** Sit where the views either side of the fold sit, in CSS pixels. */
+    lift?: number;
+    /** The height the panels over the drawing have taken, as the views see it. */
+    chrome?: number;
   } = $props();
 
   const LIGHT: Vec3 = [-0.32, 0.66, 0.68];
@@ -58,6 +66,10 @@
   let boxHeight = $state(650);
   const halfWidth = $derived(Math.max(boxWidth, 1) / 2);
   const halfHeight = $derived(Math.max(boxHeight, 1) / 2);
+  /** Exactly the rise the views either side of the fold give the shape. */
+  const rise = $derived(stageRise(boxHeight, lift));
+  const room = $derived(stageRoom(boxHeight, chrome));
+  const centerY = $derived(halfHeight - rise);
 
   const model = $derived.by<FoldModel | null>(() =>
     buildFoldModel(net, lab.mesh),
@@ -65,7 +77,7 @@
 
   /** Exactly the scale the solid view fits the shape to. */
   const solidScale = $derived(
-    (Math.min(halfWidth, halfHeight) *
+    (Math.min(halfWidth, room) *
       0.78 *
       fitFraction(lab.mesh.extent, DIMENSION_MAX)) /
       lab.mesh.extent,
@@ -278,7 +290,7 @@
           .map(
             (point) =>
               `${(halfWidth + point[0] * size).toFixed(2)},${(
-                halfHeight -
+                centerY -
                 point[1] * size
               ).toFixed(2)}`,
           )
@@ -317,8 +329,10 @@
 
 <div
   class="absolute inset-0 h-full w-full"
-  bind:clientWidth={boxWidth}
-  bind:clientHeight={boxHeight}
+  use:measureBox={(width, height) => {
+    boxWidth = width;
+    boxHeight = height;
+  }}
   data-testid="fold-view"
   data-closedness={closedness.toFixed(3)}
   aria-hidden="true"

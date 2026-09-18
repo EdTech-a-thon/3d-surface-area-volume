@@ -2,6 +2,7 @@
   import { SOLIDS } from "$lib/domain/solids";
   import { SOLID_ORDER } from "$lib/domain/types";
   import type { SolidKind } from "$lib/domain/types";
+  import { domainText, t } from "$lib/i18n/index.svelte";
   import type { LabState } from "$lib/state/lab.svelte";
   import ShapeIcon from "./ShapeIcon.svelte";
 
@@ -31,7 +32,7 @@
 </script>
 
 {#if compact}
-  <label class="sr-only" for="shape-select">Solid</label>
+  <label class="sr-only" for="shape-select">{t("shape.label")}</label>
   <select
     id="shape-select"
     data-testid="shape-select"
@@ -40,7 +41,7 @@
     onchange={(event) => lab.selectKind(event.currentTarget.value as SolidKind)}
   >
     {#each kinds as kind (kind)}
-      <option value={kind}>{SOLIDS[kind].name}</option>
+      <option value={kind}>{domainText(SOLIDS[kind].name)}</option>
     {/each}
   </select>
 {:else}
@@ -50,7 +51,7 @@
   <div
     class="pointer-events-auto flex flex-wrap gap-0.5 rounded-xl border border-rule/70 bg-panel/85 p-1 shadow-lg shadow-ink/10 backdrop-blur-md"
     role="radiogroup"
-    aria-label="Solid"
+    aria-label={t("shape.label")}
   >
     {#each SOLID_ORDER as kind (kind)}
       {@const definition = SOLIDS[kind]}
@@ -59,8 +60,8 @@
         type="button"
         role="radio"
         aria-checked={chosen}
-        aria-label={definition.name}
-        title={definition.name}
+        aria-label={domainText(definition.name)}
+        title={domainText(definition.name)}
         data-testid="shape-{kind}"
         class="grid h-10 w-10 cursor-pointer place-items-center rounded-lg transition {chosen
           ? 'bg-accent text-white'

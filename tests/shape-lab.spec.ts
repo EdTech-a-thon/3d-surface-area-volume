@@ -72,6 +72,40 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator("[data-ready=true]")).toBeAttached();
 });
 
+test("switches the whole app between English, Spanish and French", async ({
+  page,
+}) => {
+  const picker = page.getByTestId("language-select");
+
+  await picker.selectOption("es");
+  await expect(page.locator("html")).toHaveAttribute("lang", "es");
+  await expect(page.getByTestId("view-solid")).toHaveText("Sólido");
+  await expect(page.getByTestId("view-net")).toHaveText("Red");
+  await expect(page.getByTestId("shape-rectangularPrism")).toHaveAttribute(
+    "aria-label",
+    "Prisma rectangular",
+  );
+  await pointAtFace(page, "rectangularPrism:front");
+  await expect(page.getByTestId("surface-front")).toContainText("Cara frontal");
+
+  // The choice is stored for the whole site, including the prose pages.
+  await page.goto("/about");
+  await expect(page.locator("html")).toHaveAttribute("lang", "es");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Acerca de");
+
+  await page.getByTestId("language-select").selectOption("fr");
+  await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("À propos");
+
+  await page.goto("/");
+  await expect(page.getByTestId("view-solid")).toHaveText("Solide");
+  await expect(page.getByTestId("view-net")).toHaveText("Patron");
+  await expect(page.getByTestId("shape-rectangularPrism")).toHaveAttribute(
+    "aria-label",
+    "Pavé droit",
+  );
+});
+
 test("shows the exact surface area and volume of every solid", async ({
   page,
 }) => {
@@ -349,6 +383,71 @@ test("folds its controls down to fit the floating window", async ({
   await expect(page.getByTestId("shape-cone")).toBeVisible();
   await expect(page.getByTestId("rotate-left")).toBeVisible();
   await expect(page.getByTestId("surface-total")).toContainText("square units");
+});
+
+test("keeps the labels on the shape when the floating window is resized", async ({
+  page,
+  context,
+}) => {
+  const floatingPagePromise = context.waitForEvent("page");
+  await page.getByTestId("toggle-float").click();
+  const floatingPage = await floatingPagePromise;
+  await floatingPage.getByTestId("solid-view").waitFor();
+  await floatingPage.setViewportSize({ width: 600, height: 600 });
+
+  const badge = floatingPage.getByTestId("surface-top");
+  const narrow = (await badge.boundingBox())!;
+  expect(narrow.x).toBeLessThan(600);
+
+  // The floating window is a second document, so it is resized without the
+  // tab's own observers hearing about it. The badge is positioned in CSS
+  // pixels over the drawing, so it is the first thing to be left behind.
+  await floatingPage.setViewportSize({ width: 1000, height: 500 });
+  const stage = floatingPage.getByTestId("solid-view");
+  await expect
+    .poll(async () => (await badge.boundingBox())!.x, { timeout: 5000 })
+    .toBeGreaterThan(narrow.x + 100);
+
+  const box = (await stage.boundingBox())!;
+  const moved = (await badge.boundingBox())!;
+  // The top face of a cube is over the middle of it, wherever the middle now is.
+  expect(Math.abs(moved.x - box.width / 2)).toBeLessThan(box.width * 0.3);
+});
+
+test("holds the shape clear of a crowded bottom edge while floating", async ({
+  page,
+  context,
+}) => {
+  const floatingPagePromise = context.waitForEvent("page");
+  await page.getByTestId("toggle-float").click();
+  const floatingPage = await floatingPagePromise;
+  await floatingPage.getByTestId("solid-view").waitFor();
+  await floatingPage.setViewportSize({ width: 420, height: 380 });
+  await expect(floatingPage.getByTestId("surface-top")).toBeVisible();
+
+  const shape = async () =>
+    await floatingPage.evaluate(() => {
+      const faces = Array.from(
+        document.querySelectorAll("[data-testid='solid-view'] polygon"),
+      ).map((face) => face.getBoundingClientRect());
+      return {
+        top: Math.min(...faces.map((face) => face.top)),
+        bottom: Math.max(...faces.map((face) => face.bottom)),
+      };
+    });
+
+  const drawn = await shape();
+  const panel = (await floatingPage.getByLabel(/Dimensions/).boundingBox())!;
+  const middle = (drawn.top + drawn.bottom) / 2;
+
+  // The shape sits above the middle of the window, because the panels below it
+  // take more room than the row above it does.
+  expect(middle).toBeLessThan(380 / 2);
+  // It may graze a panel, but it is not buried behind one: nearly all of it is
+  // still in the clear.
+  const clear = (panel.y - drawn.top) / (drawn.bottom - drawn.top);
+  expect(clear).toBeGreaterThan(0.8);
+  expect(drawn.top).toBeGreaterThan(0);
 });
 
 test("stops auto-rotation when a net is shown", async ({ page }) => {

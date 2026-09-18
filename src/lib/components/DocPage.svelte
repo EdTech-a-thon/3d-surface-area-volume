@@ -1,5 +1,7 @@
 <script lang="ts">
   import { asset, resolve } from "$app/paths";
+  import LanguagePicker from "$lib/components/LanguagePicker.svelte";
+  import { t } from "$lib/i18n/index.svelte";
   import type { Snippet } from "svelte";
 
   /**
@@ -28,12 +30,15 @@
         <img src={asset("/edtechathon-logo.svg")} alt="" class="h-7 w-7" />
         Shape Lab
       </a>
-      <a
-        href={resolve("/")}
-        data-testid="back-to-lab"
-        class="rounded-lg px-2 py-1 text-sm font-bold text-ink-soft transition hover:text-accent"
-        >← Back to the lab</a
-      >
+      <div class="flex items-center gap-1.5">
+        <a
+          href={resolve("/")}
+          data-testid="back-to-lab"
+          class="rounded-lg px-2 py-1 text-sm font-bold text-ink-soft transition hover:text-accent"
+          >{t("common.back")}</a
+        >
+        <LanguagePicker />
+      </div>
     </div>
   </header>
 
@@ -53,11 +58,13 @@
       class="flex items-center gap-2 transition hover:text-accent"
     >
       <img src={asset("/edtechathon-logo.svg")} alt="" class="h-6 w-6" />
-      Built by teacher.dev
+      {t("common.builtBy")}
     </a>
-    <a href={resolve("/about")} class="transition hover:text-accent">about</a>
+    <a href={resolve("/about")} class="transition hover:text-accent"
+      >{t("common.about")}</a
+    >
     <a href={resolve("/privacy")} class="transition hover:text-accent"
-      >privacy</a
+      >{t("common.privacy")}</a
     >
   </footer>
 </div>

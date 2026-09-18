@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
+
   /**
    * Sends the lab out into a floating window. There is no control here for
    * coming back: the floating window carries the browser's own back-to-tab
@@ -12,11 +14,7 @@
     onToggle: () => void;
   } = $props();
 
-  const label = $derived(
-    supported
-      ? "Float Shape Lab over other tabs"
-      : "Floating windows are not supported by this browser",
-  );
+  const label = $derived(supported ? t("float.open") : t("float.unsupported"));
 </script>
 
 <button
@@ -40,5 +38,5 @@
     <rect x="2.5" y="3.5" width="15" height="12" rx="2" />
     <rect x="9.5" y="8.5" width="6" height="5" rx="1" fill="currentColor" />
   </svg>
-  <span>Float</span>
+  <span>{t("float.button")}</span>
 </button>

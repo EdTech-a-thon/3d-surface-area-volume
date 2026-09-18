@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
   import type { LabState, ViewMode } from "$lib/state/lab.svelte";
 
   let {
@@ -17,7 +18,7 @@
 <div
   class="pointer-events-auto flex rounded-xl border border-rule/70 bg-panel/85 p-1 shadow-lg shadow-ink/10 backdrop-blur-md"
   role="radiogroup"
-  aria-label="View"
+  aria-label={t("view.label")}
 >
   <button
     type="button"
@@ -25,7 +26,7 @@
     aria-checked={!isNet}
     data-testid="view-solid"
     class="{tab} {!isNet ? 'bg-accent text-white' : 'text-ink-soft'}"
-    onclick={() => onViewChange("solid")}>Solid</button
+    onclick={() => onViewChange("solid")}>{t("view.solid")}</button
   >
   <!-- A disabled button dispatches no pointer events of its own, so the reason
        the Net tab is greyed out has to be hung on something around it. The
@@ -44,7 +45,7 @@
       class="{tab} {isNet ? 'bg-accent text-white' : 'text-ink-soft'}"
       disabled={!lab.definition.hasNet}
       aria-describedby={lab.definition.hasNet ? undefined : "no-net-reason"}
-      onclick={() => onViewChange("net")}>Net</button
+      onclick={() => onViewChange("net")}>{t("view.net")}</button
     >
     {#if !lab.definition.hasNet}
       <!-- Always in the document, so the tab keeps something to point its
@@ -56,8 +57,9 @@
           ? "absolute top-full right-0 z-30 mt-2 w-60 rounded-lg border border-rule/70 bg-panel/95 px-3 py-1.5 text-center text-xs font-normal normal-case shadow-lg shadow-ink/10 backdrop-blur-md"
           : "sr-only"}
       >
-        A sphere has <strong>no flat net</strong>: its surface cannot be
-        flattened without stretching, which is why world maps distort countries.
+        {t("view.noNet.before")}<strong>{t("view.noNet.strong")}</strong>{t(
+          "view.noNet.after",
+        )}
       </p>
     {/if}
   </span>

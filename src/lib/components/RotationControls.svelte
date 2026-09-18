@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
   import type { LabState } from "$lib/state/lab.svelte";
 
   let {
@@ -25,7 +26,7 @@
 <div
   class="pointer-events-auto flex items-center gap-0.5 rounded-xl border border-rule/70 bg-panel/85 p-1 shadow-lg shadow-ink/10 backdrop-blur-md"
   role="group"
-  aria-label="Rotate the 3D view"
+  aria-label={t("rotation.label")}
 >
   {#if !compact}
     <button
@@ -33,7 +34,7 @@
       class={button}
       data-testid="rotate-left"
       disabled={isNet}
-      aria-label="Rotate left"
+      aria-label={t("rotation.left")}
       onclick={() => lab.rotateBy(-STEP, 0)}>←</button
     >
     <button
@@ -41,7 +42,7 @@
       class={button}
       data-testid="rotate-up"
       disabled={isNet}
-      aria-label="Tip back"
+      aria-label={t("rotation.back")}
       onclick={() => lab.rotateBy(0, -STEP)}>↑</button
     >
     <button
@@ -49,7 +50,7 @@
       class={button}
       data-testid="rotate-down"
       disabled={isNet}
-      aria-label="Tip forward"
+      aria-label={t("rotation.forward")}
       onclick={() => lab.rotateBy(0, STEP)}>↓</button
     >
     <button
@@ -57,7 +58,7 @@
       class={button}
       data-testid="rotate-right"
       disabled={isNet}
-      aria-label="Rotate right"
+      aria-label={t("rotation.right")}
       onclick={() => lab.rotateBy(STEP, 0)}>→</button
     >
 
@@ -69,8 +70,8 @@
     class={button}
     data-testid="reset-view"
     disabled={isNet}
-    aria-label="Reset the view"
-    title="Reset the view"
+    aria-label={t("rotation.reset")}
+    title={t("rotation.reset")}
     onclick={() => lab.resetView()}
   >
     <svg
@@ -101,12 +102,12 @@
     data-testid="toggle-spin"
     aria-pressed={lab.autoRotate}
     disabled={isNet || reducedMotion}
-    aria-label={lab.autoRotate ? "Stop spinning" : "Spin the shape"}
+    aria-label={lab.autoRotate ? t("rotation.stop") : t("rotation.spin")}
     title={reducedMotion
-      ? "Continuous spinning is off because this device asks for reduced motion"
+      ? t("rotation.reduced")
       : lab.autoRotate
-        ? "Stop spinning"
-        : "Spin the shape"}
+        ? t("rotation.stop")
+        : t("rotation.spin")}
     onclick={() => lab.toggleAutoRotate()}
   >
     <svg
