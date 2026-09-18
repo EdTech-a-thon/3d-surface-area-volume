@@ -355,20 +355,47 @@ test("folds its controls down to fit the floating window", async ({
   const floatingPage = await floatingPagePromise;
   await floatingPage.getByTestId("solid-view").waitFor();
 
-  // The picker becomes one dropdown, and the maker's mark stands down: the
-  // little window is for the shape.
-  await expect(floatingPage.getByTestId("shape-select")).toBeVisible();
+  // The picker folds into one button showing the solid that is on the stage,
+  // and the maker's mark stands down: the little window is for the shape.
+  await expect(floatingPage.getByTestId("shape-picker")).toBeVisible();
   await expect(floatingPage.getByTestId("shape-cube")).toHaveCount(0);
   await expect(floatingPage.getByTestId("brand-toggle")).toHaveCount(0);
 
-  await floatingPage.getByTestId("shape-select").selectOption("cone");
+  // The list behind it is the same icons, and no names: the drawing of a cone
+  // says what "cone" would, in less room.
+  await floatingPage.getByTestId("shape-picker").click();
+  const option = floatingPage.getByTestId("shape-cone");
+  await expect(option).toHaveText("");
+  await option.click();
   await expect(floatingPage.getByTestId("input-r")).toBeVisible();
+  await expect(floatingPage.getByTestId("shape-list")).toHaveCount(0);
 
-  // The nudge arrows go; recentre and spin, which dragging cannot do, stay.
+  // The nudge arrows go; recentre and spin, which dragging cannot do, stay,
+  // and they stay where they have always been: the middle of the bottom edge.
   await expect(floatingPage.getByTestId("rotate-left")).toHaveCount(0);
   await expect(floatingPage.getByTestId("rotate-right")).toHaveCount(0);
   await expect(floatingPage.getByTestId("reset-view")).toBeVisible();
   await expect(floatingPage.getByTestId("toggle-spin")).toBeVisible();
+
+  const spin = (await floatingPage.getByTestId("toggle-spin").boundingBox())!;
+  const dimensions = (await floatingPage
+    .getByLabel(/Dimensions/)
+    .boundingBox())!;
+  const answers = (await floatingPage.getByLabel("Totals").boundingBox())!;
+  const width = floatingPage.viewportSize()!.width;
+  expect(Math.abs(spin.x + spin.width / 2 - width / 2)).toBeLessThan(
+    width * 0.12,
+  );
+  expect(spin.y).toBeGreaterThan(floatingPage.viewportSize()!.height * 0.6);
+
+  // The dimensions stay a column, one under the next, as they are in the tab.
+  const inputs = ["r", "h"].map((key) =>
+    floatingPage.getByTestId(`input-${key}`),
+  );
+  const boxes = await Promise.all(inputs.map((input) => input.boundingBox()));
+  expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y + boxes[0]!.height / 2);
+  expect(Math.abs(boxes[1]!.x - boxes[0]!.x)).toBeLessThan(2);
+  expect(dimensions.x).toBeLessThan(answers.x);
 
   // And the generic units are said the short way.
   await expect(floatingPage.getByTestId("surface-total")).toContainText(
@@ -383,6 +410,60 @@ test("folds its controls down to fit the floating window", async ({
   await expect(page.getByTestId("shape-cone")).toBeVisible();
   await expect(page.getByTestId("rotate-left")).toBeVisible();
   await expect(page.getByTestId("surface-total")).toContainText("square units");
+});
+
+test("keeps the view controls level with the panels for as long as they fit", async ({
+  page,
+  context,
+}) => {
+  const floatingPagePromise = context.waitForEvent("page");
+  await page.getByTestId("toggle-float").click();
+  const floatingPage = await floatingPagePromise;
+  await floatingPage.getByTestId("solid-view").waitFor();
+
+  // The panel the controls sit in, not the button inside it: what is being
+  // compared is where the three panels stand, not where their contents do.
+  const controls = () => floatingPage.getByTestId("toggle-spin").locator("..");
+  const answers = () => floatingPage.getByLabel("Totals");
+  const dimensions = () => floatingPage.getByLabel(/Dimensions/);
+  const foot = async (locator: ReturnType<typeof answers>) => {
+    const box = (await locator.boundingBox())!;
+    return box.y + box.height;
+  };
+  const level = async () =>
+    Math.max(
+      Math.abs((await foot(controls())) - (await foot(answers()))),
+      Math.abs((await foot(controls())) - (await foot(dimensions()))),
+    );
+
+  // Room for all three, and room to spare: the controls take the middle of the
+  // window, standing on the same line as the panels either side of them.
+  await floatingPage.setViewportSize({ width: 620, height: 520 });
+  await expect.poll(level).toBeLessThan(4);
+  const roomy = (await controls().boundingBox())!;
+  expect(Math.abs(roomy.x + roomy.width / 2 - 620 / 2)).toBeLessThan(620 * 0.1);
+
+  // Squeezed until the middle of the window is out of reach — the answers panel
+  // is much the wider of the two, so it runs out of room while the gap on the
+  // other side is still wide open. The controls keep the line regardless.
+  await floatingPage.setViewportSize({ width: 400, height: 420 });
+  await expect.poll(level).toBeLessThan(4);
+  const tight = (await controls().boundingBox())!;
+  const left = (await dimensions().boundingBox())!;
+  const right = (await answers().boundingBox())!;
+  expect(tight.x).toBeGreaterThan(left.x + left.width);
+  expect(tight.x + tight.width).toBeLessThan(right.x);
+
+  // Smaller again, and the panels give up the row themselves; the controls stay
+  // at the bottom of the window, still centred.
+  await floatingPage.setViewportSize({ width: 320, height: 460 });
+  await expect
+    .poll(async () => (await foot(controls())) - (await foot(answers())))
+    .toBeGreaterThan(8);
+  const stacked = (await controls().boundingBox())!;
+  expect(Math.abs(stacked.x + stacked.width / 2 - 320 / 2)).toBeLessThan(
+    320 * 0.1,
+  );
 });
 
 test("keeps the labels on the shape when the floating window is resized", async ({
@@ -648,6 +729,30 @@ test("relabels units without converting the numbers", async ({ page }) => {
   await expect(page.getByTestId("surface-total")).toContainText("94");
   await expect(page.getByTestId("surface-total")).toContainText("cm²");
   await expect(page.getByTestId("volume-total")).toContainText("cm³");
+});
+
+test("says what one grid square is worth, in either view", async ({ page }) => {
+  // The drawing is always fitted to the screen, so the grid is the only thing
+  // that says how big the shape is — and the key is the only thing that says
+  // how big the grid is.
+  const key = page.getByTestId("grid-key");
+  await expect(key).toContainText("1 units");
+  await page.getByTestId("unit-select").selectOption("cm");
+  await expect(key).toContainText("1 cm");
+
+  // The step is a round number of units at any size, so a much larger shape is
+  // measured by much larger squares rather than by a denser grid.
+  await page.getByTestId("input-l").fill("300");
+  await page.getByTestId("input-w").fill("300");
+  await page.getByTestId("input-h").fill("300");
+  await expect(key).toContainText(/\b(10|20|100) cm$/);
+
+  await page.getByTestId("input-l").fill("3");
+  await page.getByTestId("input-w").fill("4");
+  await page.getByTestId("input-h").fill("5");
+  await page.getByTestId("view-net").click();
+  await expect(page.getByTestId("net-view")).toBeVisible();
+  await expect(page.getByTestId("grid-key")).toContainText("1 cm");
 });
 
 test("supports every essential action from the keyboard alone", async ({

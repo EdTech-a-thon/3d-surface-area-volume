@@ -22,10 +22,10 @@
   }: {
     lab: LabState;
     /**
-     * Fit a floating window. The dimensions run across the panel instead of
-     * down it, so a solid with four of them costs one or two short rows rather
-     * than four tall ones, and the slider — the widest control here, and the
-     * one the typed box already covers — stands down.
+     * Fit a floating window. The dimensions keep their column — they are read
+     * as a list, and a list reads down — but everything around them gives way:
+     * the slider stands down, since it is the widest control here and the typed
+     * box already covers it, and the rest closes up as the window shrinks.
      */
     compact?: boolean;
   } = $props();
@@ -46,14 +46,12 @@
      varies. Pointing at a symbol lights up every edge that carries it. -->
 <section
   class="pointer-events-auto min-w-0 rounded-xl border border-rule/70 bg-panel/90 p-2 shadow-lg shadow-ink/10 backdrop-blur-md {compact
-    ? 'max-h-[42dvh] overflow-y-auto max-[26rem]:p-1.5 [@media(max-height:26rem)]:p-1.5'
+    ? 'max-h-[42dvh] overflow-y-auto max-[26rem]:p-1.5 [@media(max-height:26rem)]:max-h-[32dvh] [@media(max-height:26rem)]:p-1.5'
     : ''}"
   aria-label={t("measure.dimensions", { unit: linear })}
 >
   <div
-    class={compact
-      ? "flex max-w-[min(21rem,56vw)] flex-wrap items-center gap-x-3 gap-y-1 max-[26rem]:gap-x-2"
-      : "flex flex-col gap-1.5"}
+    class="flex flex-col {compact ? 'gap-1 max-[26rem]:gap-0.5' : 'gap-1.5'}"
   >
     {#each lab.definition.dimensions as spec (spec.key)}
       {@const error = lab.errors[spec.key]}

@@ -35,6 +35,7 @@
     compact = false,
     lift = 0,
     chrome = 0,
+    onGrid,
   }: {
     lab: LabState;
     net: Net;
@@ -44,6 +45,13 @@
     lift?: number;
     /** The height the panels over the net have taken, as the solid view sees it. */
     chrome?: number;
+    /**
+     * Where to report the size of one grid square, in the shape's own units.
+     * The step is settled here, out of the fit to this element, but it is read
+     * off a key in the corner of the lab: only the lab knows what room the
+     * panels have left in that corner.
+     */
+    onGrid?: (step: number) => void;
   } = $props();
 
   // Every piece is already in the solid's length units, so one viewBox scales
@@ -52,6 +60,14 @@
   // that single shared scale while letting the net fill the screen.
   let boxWidth = $state(900);
   let boxHeight = $state(650);
+  /**
+   * Whether those are the element's own numbers yet, rather than the guess the
+   * component starts with. The drawing survives a wrong guess — the viewBox
+   * scales it to fit either way — but the labels over it are placed in CSS
+   * pixels, so on a prerendered page they would paint somewhere near the top
+   * left and jump into place at hydration. They wait for the measurement.
+   */
+  let measured = $state(false);
 
   /**
    * Half the width of the largest net the sliders reach: a cube of edge 20 lays
@@ -105,9 +121,16 @@
   const grid = $derived(gridScale(1 / layout.pixel));
   const GRID_PATTERN_ID = "net-measured-grid";
   const FINE_GRID_PATTERN_ID = "net-measured-grid-fine";
-  /** How dark the dots sit against the backdrop. */
-  const GRID_INK = 0.35;
+  /** How dark the ruling sits against the backdrop. */
+  const GRID_INK = 0.45;
   const gridInk = $derived(gridLayers(GRID_INK, grid.fade));
+
+  // Report the step rather than draw it: the key to the grid lives with the
+  // totals, where the other numbers about the shape are.
+  $effect(() => {
+    onGrid?.(grid.step);
+  });
+
   const codeSize = $derived(layout.pixel * 20);
   const sizeTextSize = $derived(layout.pixel * 13);
   const strokeWidth = $derived(layout.pixel * 1.5);
@@ -238,6 +261,7 @@
   use:measureBox={(width, height) => {
     boxWidth = width;
     boxHeight = height;
+    measured = true;
   }}
 >
   <svg
@@ -255,21 +279,26 @@
     }}
   >
     <defs>
-      <!-- Dots a round number of units apart, in the net's own units, so the
-           pieces spread over more of them as the solid grows. -->
+      <!-- Squares a round number of units across, in the net's own units, so
+           the pieces cover more of them as the solid grows. The lattice is left
+           where the net's own origin puts it — every net is laid out from a
+           corner of a piece — so the ruling runs along the pieces' edges and
+           the squares along a side can be counted, exactly as they can on the
+           floor under the solid. -->
       {#each [{ id: GRID_PATTERN_ID, step: grid.step }, { id: FINE_GRID_PATTERN_ID, step: grid.fineStep }] as lattice (lattice.id)}
         <pattern
           id={lattice.id}
           width={lattice.step}
           height={lattice.step}
           patternUnits="userSpaceOnUse"
-          patternTransform="translate({-lattice.step / 2} {-lattice.step / 2})"
         >
-          <circle
-            cx={lattice.step / 2}
-            cy={lattice.step / 2}
-            r={layout.pixel * 1.6}
-            fill="#46606f"
+          <!-- Two sides of the square only: the other two belong to the
+               neighbouring tiles, and drawing all four doubles every line. -->
+          <path
+            d="M0 {lattice.step} V0 H{lattice.step}"
+            fill="none"
+            stroke="#46606f"
+            stroke-width={layout.pixel}
           />
         </pattern>
       {/each}
@@ -458,8 +487,13 @@
   </svg>
 
   <!-- The areas live above the drawing as real buttons, matching the badges on
-       the solid, so a measured piece reads the same in either view. -->
-  <div class="pointer-events-none absolute inset-0 overflow-hidden">
+       the solid, so a measured piece reads the same in either view. They are
+       placed in CSS pixels, so they stay hidden until the stage has been
+       measured: see `measured`. -->
+  <div
+    class="pointer-events-none absolute inset-0 overflow-hidden"
+    class:invisible={!measured}
+  >
     {#each chips as chip (chip.key)}
       <button
         type="button"

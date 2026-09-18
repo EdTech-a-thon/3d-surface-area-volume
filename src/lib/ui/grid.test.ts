@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fitFraction, gridLayers, gridScale } from "./grid";
 
 describe("gridScale", () => {
-  it("keeps the dots readably apart at any zoom", () => {
+  it("keeps the lines readably apart at any zoom", () => {
     for (const pixelsPerUnit of [0.03, 1, 7.4, 146, 2500]) {
       const { step, gap } = gridScale(pixelsPerUnit);
       expect(gap).toBeGreaterThanOrEqual(26);

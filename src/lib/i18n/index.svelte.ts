@@ -70,6 +70,7 @@ const en = {
     "solid.description":
       "{name} with {dimensions} {unit}. Drag or use the arrow keys to rotate. Point at a face or an edge to measure it.",
     "net.description": "Flat net of the {name}",
+    "grid.key": "Each grid square is {size} {unit} across",
     "about.pageTitle": "About — Shape Lab",
     "about.meta":
       "Shape Lab is a free, ad-free classroom tool for teaching surface area and volume, built by teacher.dev.",
@@ -223,6 +224,7 @@ const es = {
     "solid.description":
       "{name} con {dimensions} {unit}. Arrastra o usa las flechas para girarlo. Señala una cara o una arista para medirla.",
     "net.description": "Red plana de {name}",
+    "grid.key": "Cada cuadrado de la cuadrícula mide {size} {unit}",
     "about.pageTitle": "Acerca de — Shape Lab",
     "about.meta":
       "Shape Lab es una herramienta gratuita y sin anuncios para enseñar área superficial y volumen, creada por teacher.dev.",
@@ -452,6 +454,7 @@ const fr = {
     "solid.description":
       "{name} avec {dimensions} {unit}. Faites glisser ou utilisez les flèches pour le faire pivoter. Pointez une face ou une arête pour la mesurer.",
     "net.description": "Patron plan de {name}",
+    "grid.key": "Chaque carré du quadrillage mesure {size} {unit}",
     "about.pageTitle": "À propos — Shape Lab",
     "about.meta":
       "Shape Lab est un outil pédagogique gratuit et sans publicité pour enseigner l’aire et le volume, créé par teacher.dev.",

@@ -29,21 +29,101 @@
       ? ([...SOLID_ORDER, "logoSlab"] as const satisfies readonly SolidKind[])
       : SOLID_ORDER,
   );
+
+  let open = $state(false);
+  let picker = $state<HTMLDivElement | undefined>();
+
+  function choose(kind: SolidKind) {
+    lab.selectKind(kind);
+    open = false;
+  }
+
+  /**
+   * A press anywhere else puts the list away. The listener belongs to the
+   * document this picker is actually in, which is not the page's own document
+   * when the lab is floating.
+   */
+  $effect(() => {
+    if (!open || !picker) return;
+    const owner = picker.ownerDocument;
+    const close = (event: Event) => {
+      if (!picker?.contains(event.target as Node)) open = false;
+    };
+    owner.addEventListener("pointerdown", close, true);
+    return () => owner.removeEventListener("pointerdown", close, true);
+  });
 </script>
 
 {#if compact}
-  <label class="sr-only" for="shape-select">{t("shape.label")}</label>
-  <select
-    id="shape-select"
-    data-testid="shape-select"
-    class="pointer-events-auto max-w-[9.5rem] cursor-pointer rounded-xl border border-rule/70 bg-panel/85 px-2 py-1 text-xs font-bold shadow-lg shadow-ink/10 backdrop-blur-md"
-    value={lab.kind}
-    onchange={(event) => lab.selectKind(event.currentTarget.value as SolidKind)}
+  <!-- The same icons, behind one of them. A floating window has room for a
+       single button along its top edge, so the picker shows what is on the
+       stage and opens the rest underneath. Names would say no more than the
+       drawings do, and cost the width the shape wants. -->
+  <div
+    role="presentation"
+    class="pointer-events-auto relative"
+    bind:this={picker}
+    onkeydown={(event) => {
+      if (event.key === "Escape" && open) {
+        open = false;
+        event.stopPropagation();
+      }
+    }}
   >
-    {#each kinds as kind (kind)}
-      <option value={kind}>{domainText(SOLIDS[kind].name)}</option>
-    {/each}
-  </select>
+    <button
+      type="button"
+      data-testid="shape-picker"
+      aria-haspopup="listbox"
+      aria-expanded={open}
+      aria-label="{t('shape.label')}: {domainText(SOLIDS[lab.kind].name)}"
+      title={domainText(SOLIDS[lab.kind].name)}
+      class="flex h-10 cursor-pointer items-center gap-0.5 rounded-xl border border-rule/70 bg-panel/85 pr-1 pl-1.5 text-ink-soft shadow-lg shadow-ink/10 backdrop-blur-md transition hover:text-accent"
+      onclick={() => (open = !open)}
+    >
+      <ShapeIcon kind={lab.kind} size={26} />
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="3"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+    </button>
+
+    {#if open}
+      <div
+        role="listbox"
+        aria-label={t("shape.label")}
+        data-testid="shape-list"
+        class="absolute top-full left-0 z-30 mt-1.5 grid w-max grid-cols-3 gap-0.5 rounded-xl border border-rule/70 bg-panel/95 p-1 shadow-lg shadow-ink/10 backdrop-blur-md"
+      >
+        {#each kinds as kind (kind)}
+          {@const definition = SOLIDS[kind]}
+          {@const chosen = lab.kind === kind}
+          <button
+            type="button"
+            role="option"
+            aria-selected={chosen}
+            aria-label={domainText(definition.name)}
+            title={domainText(definition.name)}
+            data-testid="shape-{kind}"
+            class="grid h-10 w-10 cursor-pointer place-items-center rounded-lg transition {chosen
+              ? 'bg-accent text-white'
+              : 'text-ink-soft hover:bg-ink/5 hover:text-accent'}"
+            onclick={() => choose(kind)}
+          >
+            <ShapeIcon {kind} size={26} />
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
 {:else}
   <!-- Icons only: the shape on the stage says which solid this is, so the names
        would only repeat it. Each button still carries its name for assistive

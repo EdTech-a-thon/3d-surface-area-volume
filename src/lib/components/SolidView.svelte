@@ -38,6 +38,7 @@
     compact = false,
     lift = 0,
     chrome = 0,
+    onGrid,
   }: {
     lab: LabState;
     reducedMotion?: boolean;
@@ -56,6 +57,13 @@
      * window shrunk around it gives up shape rather than burying it.
      */
     chrome?: number;
+    /**
+     * Where to report the size of one grid square, in the shape's own units.
+     * The step is settled here, out of the fit to this element, but it is read
+     * off a key in the corner of the lab: only the lab knows what room the
+     * panels have left in that corner.
+     */
+    onGrid?: (step: number) => void;
   } = $props();
 
   const LIGHT: Vec3 = [-0.32, 0.66, 0.68];
@@ -65,6 +73,14 @@
   // straight from the projected geometry.
   let boxWidth = $state(900);
   let boxHeight = $state(650);
+  /**
+   * Whether those are the element's own numbers yet, rather than the guess the
+   * component starts with. The drawing survives a wrong guess — the viewBox
+   * scales it to fit either way — but the labels over it are placed in CSS
+   * pixels, so on a prerendered page they would paint somewhere near the top
+   * left and jump into place at hydration. They wait for the measurement.
+   */
+  let measured = $state(false);
   const halfWidth = $derived(Math.max(boxWidth, 1) / 2);
   const halfHeight = $derived(Math.max(boxHeight, 1) / 2);
   /** Never so far up that the shape leaves the top of the window. See stage.ts. */
@@ -94,6 +110,13 @@
   /** How dark the ruling sits against the backdrop. */
   const FLOOR_INK = 0.55;
   const gridInk = $derived(gridLayers(FLOOR_INK, grid.fade));
+
+  // Report the step rather than draw it: the key to the grid lives with the
+  // totals, where the other numbers about the shape are.
+  $effect(() => {
+    onGrid?.(grid.step);
+  });
+
   const FLOOR_MASK_ID = "floor-reach";
   const FLOOR_FADE_ID = "floor-fade";
 
@@ -108,6 +131,24 @@
       for (const [, y] of facet.points) if (y < lowest) lowest = y;
     }
     return lowest;
+  });
+
+  /**
+   * The near corner of the solid's footprint: the smallest x and z it reaches.
+   * The ruling is anchored there rather than on the centre of the floor, so the
+   * squares line up with the solid's own edges and can be counted along them.
+   * See floorRules.
+   */
+  const footprint = $derived.by(() => {
+    let x = 0;
+    let z = 0;
+    for (const facet of lab.mesh.facets) {
+      for (const [px, , pz] of facet.points) {
+        if (px < x) x = px;
+        if (pz < z) z = pz;
+      }
+    }
+    return { x, z };
   });
 
   /**
@@ -509,6 +550,7 @@
   use:measureBox={(width, height) => {
     boxWidth = width;
     boxHeight = height;
+    measured = true;
   }}
   onpointerleave={clearHover}
 >
@@ -583,7 +625,9 @@
                instead of a unit thick in the scene. -->
           {#each floorLayers as layer (layer.key)}
             <g stroke="#46606f" stroke-opacity={layer.ink}>
-              {#each floorRules(layer.step, floorRadius) as rule (rule)}
+              <!-- Each direction is anchored on the footprint edge it crosses,
+                   so both run along the solid's own sides. -->
+              {#each floorRules(layer.step, floorRadius, footprint.x) as rule (rule)}
                 <line
                   x1={rule}
                   y1={-floorRadius}
@@ -592,6 +636,8 @@
                   stroke-width="1"
                   vector-effect="non-scaling-stroke"
                 />
+              {/each}
+              {#each floorRules(layer.step, floorRadius, footprint.z) as rule (rule)}
                 <line
                   x1={-floorRadius}
                   y1={rule}
@@ -681,8 +727,12 @@
   </svg>
 
   <!-- Measurements live above the drawing as real buttons, so they can be read,
-       focused and pinned without a pointer. -->
-  <div class="pointer-events-none absolute inset-0 overflow-hidden">
+       focused and pinned without a pointer. They are placed in CSS pixels, so
+       they stay hidden until the stage has been measured: see `measured`. -->
+  <div
+    class="pointer-events-none absolute inset-0 overflow-hidden"
+    class:invisible={!measured}
+  >
     {#each badges as badge (badge.surface.id)}
       <button
         type="button"
