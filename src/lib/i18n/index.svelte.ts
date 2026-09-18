@@ -13,6 +13,7 @@ const en = {
     "app.pageTitle": "Geometric Solids — surface area and volume",
     "app.description":
       "An interactive lab for exploring surface area and volume.",
+    "rebrand.notice": "ShapeLab is now Geometric Solids.",
     "lab.answersVisible": "Final answers are visible.",
     "lab.answersHidden": "Final answers are hidden.",
     "lab.units": "Units",
@@ -167,6 +168,7 @@ const es = {
     "app.pageTitle": "Geometric Solids — área superficial y volumen",
     "app.description":
       "Un laboratorio interactivo para explorar el área superficial y el volumen.",
+    "rebrand.notice": "ShapeLab ahora es Geometric Solids.",
     "lab.answersVisible": "Las respuestas finales están visibles.",
     "lab.answersHidden": "Las respuestas finales están ocultas.",
     "lab.units": "Unidades",
@@ -396,6 +398,7 @@ const fr = {
     "app.pageTitle": "Geometric Solids — aire et volume",
     "app.description":
       "Un laboratoire interactif pour explorer l’aire et le volume.",
+    "rebrand.notice": "ShapeLab s’appelle désormais Geometric Solids.",
     "lab.answersVisible": "Les réponses finales sont visibles.",
     "lab.answersHidden": "Les réponses finales sont masquées.",
     "lab.units": "Unités",
