@@ -1,12 +1,21 @@
 <script lang="ts">
   import "../app.css";
   import { env } from "$env/dynamic/public";
+  import RebrandNotice from "$lib/components/RebrandNotice.svelte";
   import { current, initializeLanguage } from "$lib/i18n/index.svelte";
+  import { isShapeLabReferral } from "$lib/ui/legacyReferral";
   import { onMount } from "svelte";
 
   let { children } = $props();
+  let showRebrandNotice = $state(false);
 
-  onMount(initializeLanguage);
+  onMount(() => {
+    initializeLanguage();
+    showRebrandNotice = isShapeLabReferral(
+      document.referrer,
+      window.location.href,
+    );
+  });
 
   $effect(() => {
     document.documentElement.lang = current().locale;
@@ -28,3 +37,7 @@
 </svelte:head>
 
 {@render children()}
+
+{#if showRebrandNotice}
+  <RebrandNotice />
+{/if}
