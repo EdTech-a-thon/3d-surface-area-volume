@@ -1,10 +1,25 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+
+  let visible = $state(true);
 </script>
 
-<p class="rebrand-notice" role="status" data-testid="rebrand-notice">
-  {t("rebrand.notice")}
-</p>
+{#if visible}
+  <div class="rebrand-notice" data-testid="rebrand-notice">
+    <p role="status">{t("rebrand.notice")}</p>
+    <button
+      type="button"
+      aria-label={t("rebrand.dismiss")}
+      title={t("rebrand.dismiss")}
+      data-testid="dismiss-rebrand-notice"
+      onclick={() => (visible = false)}
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18" />
+      </svg>
+    </button>
+  </div>
+{/if}
 
 <style>
   .rebrand-notice {
@@ -12,10 +27,12 @@
     top: 16px;
     left: 50%;
     z-index: 50;
+    display: flex;
     width: max-content;
     max-width: calc(100vw - 32px);
-    margin: 0;
-    padding: 11px 18px;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 6px 5px 18px;
     border: 2px solid #e3b548;
     border-radius: 999px;
     color: var(--color-ink);
@@ -24,9 +41,39 @@
     font-size: 15px;
     font-weight: 800;
     text-align: center;
-    pointer-events: none;
     transform: translateX(-50%);
     animation: rebrand-notice 10.8s ease-in-out forwards;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  button {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #10202b14;
+  }
+
+  svg {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 2;
   }
 
   @keyframes rebrand-notice {

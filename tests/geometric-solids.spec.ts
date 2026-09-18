@@ -72,15 +72,12 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator("[data-ready=true]")).toBeAttached();
 });
 
-test("shows the rebrand notice only to visitors from ShapeLab", async ({
-  page,
-}) => {
-  await expect(page.getByTestId("rebrand-notice")).toHaveCount(0);
+test("shows every visitor a dismissible rebrand notice", async ({ page }) => {
+  const notice = page.getByTestId("rebrand-notice");
+  await expect(notice).toHaveText("ShapeLab is now Geometric Solids.");
 
-  await page.goto("/?from=shapelab.teacher.dev");
-  await expect(page.getByTestId("rebrand-notice")).toHaveText(
-    "ShapeLab is now Geometric Solids.",
-  );
+  await page.getByTestId("dismiss-rebrand-notice").click();
+  await expect(notice).toHaveCount(0);
 });
 
 test("switches the whole app between English, Spanish and French", async ({
