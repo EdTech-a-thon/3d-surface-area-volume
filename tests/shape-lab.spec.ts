@@ -272,6 +272,41 @@ test("switches straight over for a shape whose net does not fold up", async ({
   await expect(page.getByTestId("fold-view")).toHaveCount(0);
 });
 
+test("floats over other tabs and returns with its state", async ({
+  page,
+  context,
+}) => {
+  const floatButton = page.getByTestId("toggle-float");
+  await expect(floatButton).toBeEnabled();
+  await page.getByTestId("shape-cube").click();
+
+  const floatingPagePromise = context.waitForEvent("page");
+  await floatButton.click();
+  const floatingPage = await floatingPagePromise;
+
+  await expect(page.getByTestId("floating-placeholder")).toBeVisible();
+  await expect(floatingPage.getByTestId("solid-view")).toBeVisible();
+  await expect(floatingPage.getByTestId("surface-total")).toContainText("24");
+
+  // The floating copy is a fully interactive Svelte root, not a static image.
+  await floatingPage.getByTestId("input-s").fill("3");
+  await expect(floatingPage.getByTestId("surface-total")).toContainText("54");
+  await floatingPage.getByTestId("toggle-float").click();
+
+  await expect(page.getByTestId("floating-placeholder")).toHaveCount(0);
+  await expect(page.getByTestId("solid-view")).toBeVisible();
+  await expect(page.getByTestId("surface-total")).toContainText("54");
+
+  // Closing with the browser's own Picture-in-Picture control returns it too.
+  const reopenedPagePromise = context.waitForEvent("page");
+  await page.getByTestId("toggle-float").click();
+  const reopenedPage = await reopenedPagePromise;
+  await reopenedPage.getByTestId("solid-view").waitFor();
+  await reopenedPage.close();
+  await expect(page.getByTestId("solid-view")).toBeVisible();
+  await expect(page.getByTestId("surface-total")).toContainText("54");
+});
+
 test("stops auto-rotation when a net is shown", async ({ page }) => {
   await page.getByTestId("toggle-spin").click();
   await expect(page.getByTestId("toggle-spin")).toHaveAttribute(

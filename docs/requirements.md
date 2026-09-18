@@ -23,6 +23,7 @@ The originating teacher request was for a rotating 3D shape app with editable le
 | Triangular prism | Right-triangle base; enter both perpendicular legs and prism length |
 | π | Show exact π expressions and an approximate decimal using calculator π, not 3.14 |
 | Volume visualization | Unit-cube fills and cross-sectional layer animations are not part of the selected launch scope |
+| Textbook workflow | Let the teacher float the interactive lab above a textbook in another tab |
 
 ## Proposed defaults
 
@@ -75,6 +76,13 @@ These are implementation recommendations, not separately confirmed requirements.
 - A sphere cannot have an exact flat net without distortion. Explain this explicitly; do not display a misleading net. Its 3D view and calculations remain available.
 - Auto-rotation does not run while showing a net.
 
+### Float over a textbook
+
+- A `Float` control opens the complete interactive lab in a browser-managed, always-on-top window so the teacher can switch to a textbook tab without losing the lab.
+- Keep the current solid, dimensions, view, and answer state when entering or leaving the floating window.
+- Leave a clear explanation and return control in the original tab while the lab is floating.
+- Disable the control with an accessible explanation when the browser does not support Document Picture-in-Picture.
+
 ### Hide and reveal answers
 
 - An eye control beside the totals hides the final numerical surface-area and volume results.
@@ -94,6 +102,7 @@ These are implementation recommendations, not separately confirmed requirements.
 - A sphere with radius 3 has surface area 36π square units and volume 36π cubic units; no exact net is offered.
 - Entering an empty, zero, negative, out-of-range, or nonfinite dimension never produces a malformed solid or NaN result. Show an input error and retain the last valid geometry.
 - Changing shape or view while answers are hidden does not reveal a final result.
+- Floating the lab, changing a dimension there, and returning it to the tab preserves the changed geometry and results.
 - Every essential action can be performed without a mouse.
 
 ## Implementation constraints
@@ -116,8 +125,10 @@ Built as a single prerendered SvelteKit page.
   that every edge carrying it responds to.
 - `src/lib/components/` renders the solid and the net as accessible SVG. The
   shape fills the screen; four small panels float over it — the solid picker
-  top left, the view and unit controls top right, the dimensions bottom left,
-  and the two totals bottom right.
+  top left, the view, unit, and floating-window controls top right, the
+  dimensions bottom left, and the two totals bottom right. `ShapeLab.svelte`
+  mounts the same stateful experience in the page or in a Document
+  Picture-in-Picture window.
 - `tests/shape-lab.spec.ts` covers the browser behaviour listed in the domain
   model's verification section.
 

@@ -35,7 +35,12 @@
   let {
     lab,
     reducedMotion = false,
-  }: { lab: LabState; reducedMotion?: boolean } = $props();
+    animationWindow,
+  }: {
+    lab: LabState;
+    reducedMotion?: boolean;
+    animationWindow?: Window;
+  } = $props();
 
   const LIGHT: Vec3 = [-0.32, 0.66, 0.68];
 
@@ -416,19 +421,22 @@
   }
 
   // Auto-rotation runs only while the solid view is showing, and never when the
-  // viewer has asked for reduced motion.
+  // viewer has asked for reduced motion. Use the floating window's animation
+  // clock while the lab is in Picture-in-Picture; a hidden opener tab may pause
+  // its own animation frames.
   $effect(() => {
     if (!lab.autoRotate || lab.view !== "solid" || reducedMotion) return;
+    const clock = animationWindow ?? window;
     let frame = 0;
-    let previous = performance.now();
+    let previous = clock.performance.now();
     const tick = (now: number) => {
       const elapsed = now - previous;
       previous = now;
       lab.rotateBy((elapsed / 1000) * 0.5, 0);
-      frame = requestAnimationFrame(tick);
+      frame = clock.requestAnimationFrame(tick);
     };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    frame = clock.requestAnimationFrame(tick);
+    return () => clock.cancelAnimationFrame(frame);
   });
 
   const description = $derived(

@@ -32,12 +32,15 @@
     net,
     direction,
     onComplete,
+    animationWindow,
   }: {
     lab: LabState;
     net: Net;
     /** "open" folds the solid out flat; "close" folds the net back up. */
     direction: "open" | "close";
     onComplete: () => void;
+    /** Where the fold is being drawn, when that is not the page's own window. */
+    animationWindow?: Window;
   } = $props();
 
   const LIGHT: Vec3 = [-0.32, 0.66, 0.68];
@@ -296,16 +299,19 @@
     }
     const from = direction === "open" ? 1 : 0;
     const to = direction === "open" ? 0 : 1;
-    const started = performance.now();
-    let frame = requestAnimationFrame(function step(now) {
+    // A window that is no longer on screen may stop handing out animation
+    // frames, so the fold is clocked by whichever window is drawing it.
+    const clock = animationWindow ?? window;
+    const started = clock.performance.now();
+    let frame = clock.requestAnimationFrame(function step(now) {
       const run = Math.min(1, (now - started) / DURATION);
       closedness = mixNumber(from, to, run);
       // Hand over a frame after the last one, not on it: the view taking over
       // draws exactly what the fold ended on, and giving that final position a
       // frame to be painted is what keeps the swap from showing.
-      frame = requestAnimationFrame(run < 1 ? step : () => onComplete());
+      frame = clock.requestAnimationFrame(run < 1 ? step : () => onComplete());
     });
-    return () => cancelAnimationFrame(frame);
+    return () => clock.cancelAnimationFrame(frame);
   });
 </script>
 
