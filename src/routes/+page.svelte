@@ -90,6 +90,7 @@
           reducedMotion,
           ready: true,
           animationWindow: pip,
+          floating: true,
         },
       });
     } catch (error) {

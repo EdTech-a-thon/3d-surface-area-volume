@@ -36,10 +36,13 @@
     lab,
     reducedMotion = false,
     animationWindow,
+    compact = false,
   }: {
     lab: LabState;
     reducedMotion?: boolean;
     animationWindow?: Window;
+    /** Shorten the unit words where the window has no room for them. */
+    compact?: boolean;
   } = $props();
 
   const LIGHT: Vec3 = [-0.32, 0.66, 0.68];
@@ -106,7 +109,9 @@
   );
 
   const linear = $derived(UNITS[lab.unit].linear);
-  const areaUnit = $derived(UNITS[lab.unit].area);
+  const areaUnit = $derived(
+    compact ? UNITS[lab.unit].areaShort : UNITS[lab.unit].area,
+  );
 
   interface DrawnFacet {
     surfaceId: string;

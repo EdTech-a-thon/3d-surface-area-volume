@@ -312,6 +312,45 @@ test("floats over other tabs and returns with its state", async ({
   await expect(page.getByTestId("surface-total")).toContainText("54");
 });
 
+test("folds its controls down to fit the floating window", async ({
+  page,
+  context,
+}) => {
+  const floatingPagePromise = context.waitForEvent("page");
+  await page.getByTestId("toggle-float").click();
+  const floatingPage = await floatingPagePromise;
+  await floatingPage.getByTestId("solid-view").waitFor();
+
+  // The picker becomes one dropdown, and the maker's mark stands down: the
+  // little window is for the shape.
+  await expect(floatingPage.getByTestId("shape-select")).toBeVisible();
+  await expect(floatingPage.getByTestId("shape-cube")).toHaveCount(0);
+  await expect(floatingPage.getByTestId("brand-toggle")).toHaveCount(0);
+
+  await floatingPage.getByTestId("shape-select").selectOption("cone");
+  await expect(floatingPage.getByTestId("input-r")).toBeVisible();
+
+  // The nudge arrows go; recentre and spin, which dragging cannot do, stay.
+  await expect(floatingPage.getByTestId("rotate-left")).toHaveCount(0);
+  await expect(floatingPage.getByTestId("rotate-right")).toHaveCount(0);
+  await expect(floatingPage.getByTestId("reset-view")).toBeVisible();
+  await expect(floatingPage.getByTestId("toggle-spin")).toBeVisible();
+
+  // And the generic units are said the short way.
+  await expect(floatingPage.getByTestId("surface-total")).toContainText(
+    "sq units",
+  );
+  await expect(floatingPage.getByTestId("volume-total")).toContainText(
+    "cu units",
+  );
+
+  // The tab it comes home to is the full-sized lab again.
+  await floatingPage.close();
+  await expect(page.getByTestId("shape-cone")).toBeVisible();
+  await expect(page.getByTestId("rotate-left")).toBeVisible();
+  await expect(page.getByTestId("surface-total")).toContainText("square units");
+});
+
 test("stops auto-rotation when a net is shown", async ({ page }) => {
   await page.getByTestId("toggle-spin").click();
   await expect(page.getByTestId("toggle-spin")).toHaveAttribute(

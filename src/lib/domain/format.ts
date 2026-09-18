@@ -13,6 +13,13 @@ export interface UnitLabels {
   readonly linear: string;
   readonly area: string;
   readonly volume: string;
+  /**
+   * The same labels for a window with no room to spare, such as the floating
+   * lab. Only the spelled-out generic units have anything to shorten; the
+   * symbols are already as short as they go.
+   */
+  readonly areaShort: string;
+  readonly volumeShort: string;
 }
 
 export const UNITS: Record<UnitKey, UnitLabels> = {
@@ -22,6 +29,8 @@ export const UNITS: Record<UnitKey, UnitLabels> = {
     linear: "units",
     area: "square units",
     volume: "cubic units",
+    areaShort: "sq units",
+    volumeShort: "cu units",
   },
   cm: {
     key: "cm",
@@ -29,9 +38,27 @@ export const UNITS: Record<UnitKey, UnitLabels> = {
     linear: "cm",
     area: "cm²",
     volume: "cm³",
+    areaShort: "cm²",
+    volumeShort: "cm³",
   },
-  m: { key: "m", name: "Metres", linear: "m", area: "m²", volume: "m³" },
-  in: { key: "in", name: "Inches", linear: "in", area: "in²", volume: "in³" },
+  m: {
+    key: "m",
+    name: "Metres",
+    linear: "m",
+    area: "m²",
+    volume: "m³",
+    areaShort: "m²",
+    volumeShort: "m³",
+  },
+  in: {
+    key: "in",
+    name: "Inches",
+    linear: "in",
+    area: "in²",
+    volume: "in³",
+    areaShort: "in²",
+    volumeShort: "in³",
+  },
 };
 
 export const UNIT_ORDER: readonly UnitKey[] = ["units", "cm", "m", "in"];

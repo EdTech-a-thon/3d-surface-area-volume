@@ -6,10 +6,21 @@
   import type { Calculation } from "$lib/domain/types";
   import type { LabState } from "$lib/state/lab.svelte";
 
-  let { lab }: { lab: LabState } = $props();
+  let {
+    lab,
+    compact = false,
+  }: {
+    lab: LabState;
+    /** Shorten the unit words; a floating window has no room for "square units". */
+    compact?: boolean;
+  } = $props();
 
-  const areaUnit = $derived(UNITS[lab.unit].area);
-  const volumeUnit = $derived(UNITS[lab.unit].volume);
+  const areaUnit = $derived(
+    compact ? UNITS[lab.unit].areaShort : UNITS[lab.unit].area,
+  );
+  const volumeUnit = $derived(
+    compact ? UNITS[lab.unit].volumeShort : UNITS[lab.unit].volume,
+  );
 
   const iconButton =
     "grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-lg border transition";

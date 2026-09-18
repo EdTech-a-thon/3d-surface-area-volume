@@ -22,6 +22,7 @@
     onFloat,
     floatError = null,
     animationWindow,
+    floating = false,
   }: {
     lab: LabState;
     reducedMotion: boolean;
@@ -35,6 +36,12 @@
     onFloat?: () => void;
     floatError?: string | null;
     animationWindow?: Window;
+    /**
+     * This copy is the one in the floating window: a small pane where the shape
+     * has to keep the room. The controls fold down to their smallest useful
+     * form, and everything that is not one — the maker's mark — steps aside.
+     */
+    floating?: boolean;
   } = $props();
 
   // A fold belongs to the drawing that is playing it, so it is held here rather
@@ -97,9 +104,9 @@
         />
       </div>
     {:else if lab.view === "net" && lab.net}
-      <NetView {lab} net={lab.net} />
+      <NetView {lab} net={lab.net} compact={floating} />
     {:else}
-      <SolidView {lab} {reducedMotion} {animationWindow} />
+      <SolidView {lab} {reducedMotion} {animationWindow} compact={floating} />
     {/if}
   </div>
 
@@ -116,9 +123,11 @@
   <div
     class="pointer-events-none absolute top-2 left-2 z-20 flex items-start gap-1.5"
   >
-    <BrandChip {lab} />
-    <div class="max-w-[9.5rem] sm:max-w-[20rem]">
-      <ShapeBar {lab} />
+    {#if !floating}
+      <BrandChip {lab} />
+    {/if}
+    <div class={floating ? "" : "max-w-[9.5rem] sm:max-w-[20rem]"}>
+      <ShapeBar {lab} compact={floating} />
     </div>
   </div>
 
@@ -165,8 +174,8 @@
     <div
       class="order-last flex w-full justify-center sm:absolute sm:bottom-0 sm:left-1/2 sm:order-none sm:w-auto sm:-translate-x-1/2"
     >
-      <RotationControls {lab} {reducedMotion} />
+      <RotationControls {lab} {reducedMotion} compact={floating} />
     </div>
-    <TotalsCard {lab} />
+    <TotalsCard {lab} compact={floating} />
   </div>
 </div>

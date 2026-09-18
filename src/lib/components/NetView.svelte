@@ -27,7 +27,16 @@
     radicalTickPath,
   } from "$lib/ui/radical";
 
-  let { lab, net }: { lab: LabState; net: Net } = $props();
+  let {
+    lab,
+    net,
+    compact = false,
+  }: {
+    lab: LabState;
+    net: Net;
+    /** Shorten the unit words where the window has no room for them. */
+    compact?: boolean;
+  } = $props();
 
   // Every piece is already in the solid's length units, so one viewBox scales
   // the whole net at once and no piece can be resized on its own. Widening the
@@ -86,7 +95,9 @@
   const sizeTextSize = $derived(layout.pixel * 13);
   const strokeWidth = $derived(layout.pixel * 1.5);
 
-  const areaUnit = $derived(UNITS[lab.unit].area);
+  const areaUnit = $derived(
+    compact ? UNITS[lab.unit].areaShort : UNITS[lab.unit].area,
+  );
 
   /**
    * One area chip per measured piece, laid over the net the way the badges are

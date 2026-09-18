@@ -4,7 +4,17 @@
   let {
     lab,
     reducedMotion = false,
-  }: { lab: LabState; reducedMotion?: boolean } = $props();
+    compact = false,
+  }: {
+    lab: LabState;
+    reducedMotion?: boolean;
+    /**
+     * Drop the nudge arrows and keep only recentre and spin. In a floating
+     * window the shape is close enough to drag directly, so the arrows are the
+     * part of this row that can go.
+     */
+    compact?: boolean;
+  } = $props();
 
   const STEP = 0.18;
   const isNet = $derived(lab.view === "net");
@@ -17,40 +27,42 @@
   role="group"
   aria-label="Rotate the 3D view"
 >
-  <button
-    type="button"
-    class={button}
-    data-testid="rotate-left"
-    disabled={isNet}
-    aria-label="Rotate left"
-    onclick={() => lab.rotateBy(-STEP, 0)}>←</button
-  >
-  <button
-    type="button"
-    class={button}
-    data-testid="rotate-up"
-    disabled={isNet}
-    aria-label="Tip back"
-    onclick={() => lab.rotateBy(0, -STEP)}>↑</button
-  >
-  <button
-    type="button"
-    class={button}
-    data-testid="rotate-down"
-    disabled={isNet}
-    aria-label="Tip forward"
-    onclick={() => lab.rotateBy(0, STEP)}>↓</button
-  >
-  <button
-    type="button"
-    class={button}
-    data-testid="rotate-right"
-    disabled={isNet}
-    aria-label="Rotate right"
-    onclick={() => lab.rotateBy(STEP, 0)}>→</button
-  >
+  {#if !compact}
+    <button
+      type="button"
+      class={button}
+      data-testid="rotate-left"
+      disabled={isNet}
+      aria-label="Rotate left"
+      onclick={() => lab.rotateBy(-STEP, 0)}>←</button
+    >
+    <button
+      type="button"
+      class={button}
+      data-testid="rotate-up"
+      disabled={isNet}
+      aria-label="Tip back"
+      onclick={() => lab.rotateBy(0, -STEP)}>↑</button
+    >
+    <button
+      type="button"
+      class={button}
+      data-testid="rotate-down"
+      disabled={isNet}
+      aria-label="Tip forward"
+      onclick={() => lab.rotateBy(0, STEP)}>↓</button
+    >
+    <button
+      type="button"
+      class={button}
+      data-testid="rotate-right"
+      disabled={isNet}
+      aria-label="Rotate right"
+      onclick={() => lab.rotateBy(STEP, 0)}>→</button
+    >
 
-  <span class="mx-0.5 h-5 w-px bg-rule" aria-hidden="true"></span>
+    <span class="mx-0.5 h-5 w-px bg-rule" aria-hidden="true"></span>
+  {/if}
 
   <button
     type="button"
