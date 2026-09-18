@@ -19,3 +19,4 @@ playwright-report
 
 # Agent worktrees, checked out inside the project
 .claude/worktrees/
+
