@@ -89,9 +89,6 @@
           lab,
           reducedMotion,
           ready: true,
-          floatSupported: true,
-          floating: true,
-          onToggleFloat: closeFloatingWindow,
           animationWindow: pip,
         },
       });
@@ -133,14 +130,15 @@
       <h1 class="text-xl font-bold">Shape Lab is floating</h1>
       <p class="mt-2 text-sm text-ink-soft">
         Switch to the textbook tab and keep this tab open. Your work stays in
-        the floating window.
+        the floating window, and its back-to-tab button brings you here again.
       </p>
       <button
         type="button"
+        data-testid="return-to-tab"
         class="mt-5 cursor-pointer rounded-xl bg-accent px-4 py-2 text-sm font-bold text-white shadow-md transition hover:brightness-110"
         onclick={closeFloatingWindow}
       >
-        Return Shape Lab to this tab
+        Bring Shape Lab back here
       </button>
     </div>
   </main>
@@ -150,8 +148,7 @@
     {reducedMotion}
     {ready}
     {floatSupported}
-    floating={false}
-    onToggleFloat={openFloatingWindow}
+    onFloat={openFloatingWindow}
     {floatError}
   />
 {/if}

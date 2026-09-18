@@ -80,6 +80,7 @@ These are implementation recommendations, not separately confirmed requirements.
 
 - A `Float` control opens the complete interactive lab in a browser-managed, always-on-top window so the teacher can switch to a textbook tab without losing the lab.
 - Keep the current solid, dimensions, view, and answer state when entering or leaving the floating window.
+- The floating window offers no return control of its own. Coming back is the browser's own back-to-tab button, which takes the teacher to the tab rather than only sending the lab there.
 - Leave a clear explanation and return control in the original tab while the lab is floating.
 - Disable the control with an accessible explanation when the browser does not support Document Picture-in-Picture.
 

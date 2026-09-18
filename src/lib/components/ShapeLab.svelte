@@ -18,18 +18,21 @@
     lab,
     reducedMotion,
     ready,
-    floatSupported,
-    floating,
-    onToggleFloat,
+    floatSupported = false,
+    onFloat,
     floatError = null,
     animationWindow,
   }: {
     lab: LabState;
     reducedMotion: boolean;
     ready: boolean;
-    floatSupported: boolean;
-    floating: boolean;
-    onToggleFloat: () => void;
+    floatSupported?: boolean;
+    /**
+     * How to send the lab out to a floating window. The copy already floating
+     * is given no such handler, and so shows no control: the way back from
+     * there is the browser's own back-to-tab button.
+     */
+    onFloat?: () => void;
     floatError?: string | null;
     animationWindow?: Window;
   } = $props();
@@ -124,11 +127,9 @@
   <div
     class="pointer-events-none absolute top-2 right-2 z-20 flex max-w-[16rem] flex-wrap justify-end gap-1.5 sm:max-w-none"
   >
-    <FloatControl
-      supported={floatSupported}
-      {floating}
-      onToggle={onToggleFloat}
-    />
+    {#if onFloat}
+      <FloatControl supported={floatSupported} onToggle={onFloat} />
+    {/if}
     <ViewToggle {lab} onViewChange={changeView} />
     <label class="sr-only" for="unit-select">Units</label>
     <select

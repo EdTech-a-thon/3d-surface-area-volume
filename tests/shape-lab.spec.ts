@@ -291,18 +291,23 @@ test("floats over other tabs and returns with its state", async ({
   // The floating copy is a fully interactive Svelte root, not a static image.
   await floatingPage.getByTestId("input-s").fill("3");
   await expect(floatingPage.getByTestId("surface-total")).toContainText("54");
-  await floatingPage.getByTestId("toggle-float").click();
 
+  // It offers no way back of its own: that is the browser's own back-to-tab
+  // button, which returns the viewer to the tab and not just the lab.
+  await expect(floatingPage.getByTestId("toggle-float")).toHaveCount(0);
+
+  // Closing the floating window, however it is closed, brings the lab home.
+  await floatingPage.close();
   await expect(page.getByTestId("floating-placeholder")).toHaveCount(0);
   await expect(page.getByTestId("solid-view")).toBeVisible();
   await expect(page.getByTestId("surface-total")).toContainText("54");
 
-  // Closing with the browser's own Picture-in-Picture control returns it too.
+  // The tab it left behind can also call it back.
   const reopenedPagePromise = context.waitForEvent("page");
   await page.getByTestId("toggle-float").click();
   const reopenedPage = await reopenedPagePromise;
   await reopenedPage.getByTestId("solid-view").waitFor();
-  await reopenedPage.close();
+  await page.getByTestId("return-to-tab").click();
   await expect(page.getByTestId("solid-view")).toBeVisible();
   await expect(page.getByTestId("surface-total")).toContainText("54");
 });
