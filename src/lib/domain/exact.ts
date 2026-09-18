@@ -1,5 +1,5 @@
 /**
- * Exact values for Shape Lab.
+ * Exact values for Geometric Solids.
  *
  * Every surface area and volume this app can produce is a sum of terms shaped
  * like `coefficient × √radicand × πⁿ`, because the only irrational ingredients

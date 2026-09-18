@@ -1,5 +1,6 @@
 <script lang="ts">
   import DocPage from "$lib/components/DocPage.svelte";
+  import { t } from "$lib/i18n/index.svelte";
 
   const card =
     "mb-6 rounded-2xl border border-rule/70 bg-panel/85 p-6 shadow-lg shadow-ink/10";
@@ -7,38 +8,26 @@
 </script>
 
 <svelte:head>
-  <title>Privacy — Shape Lab</title>
-  <meta
-    name="description"
-    content="What Shape Lab collects, what it doesn't, and why."
-  />
+  <title>{t("privacy.pageTitle")}</title>
+  <meta name="description" content={t("privacy.meta")} />
 </svelte:head>
 
-<DocPage title="Privacy" lede="What we collect, what we don't, and why.">
+<DocPage title={t("privacy.title")} lede={t("privacy.lede")}>
   <section class={card}>
     <p class="leading-relaxed text-ink-soft">
-      Shape Lab does not collect personal information from teachers or students.
-      There are no accounts, and nothing you type into it — dimensions, units,
-      the solid you pick — is sent anywhere or saved anywhere. It all lives in
-      the page for as long as the tab is open, and it is gone when you close it.
+      {t("privacy.local")}
     </p>
     <p class="mt-4 leading-relaxed text-ink-soft">
-      We use Cloudflare Web Analytics to anonymously count visits, which helps
-      us understand how Shape Lab is being used in classrooms. Cloudflare Web
-      Analytics is cookieless, does not fingerprint visitors, and does not track
-      users across other sites; see Cloudflare's
-      <a
+      {t("privacy.analytics.beforeLink")}<a
         href="https://www.cloudflare.com/privacypolicy/"
         target="_blank"
         rel="noopener noreferrer"
-        class={link}>privacy policy</a
-      > for details. We do not share, sell, or otherwise transfer any visitor data
-      to third parties.
+        class={link}>{t("privacy.analytics.link")}</a
+      >{t("privacy.analytics.afterLink")}
     </p>
     <p class="mt-4 leading-relaxed text-ink-soft">
-      Questions or concerns? Email
-      <a
-        href="mailto:support@teacher.dev?subject=Shape%20Lab%20privacy"
+      {t("privacy.contact")}<a
+        href="mailto:support@teacher.dev?subject=Geometric%20Solids%20privacy"
         class={link}>support@teacher.dev</a
       >.
     </p>

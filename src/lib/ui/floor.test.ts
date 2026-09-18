@@ -31,7 +31,25 @@ describe("floorPlane", () => {
 
 describe("floorRules", () => {
   it("rules both ways out to the edge, through the origin", () => {
-    expect(floorRules(0.5, 1.2)).toEqual([-1.5, -1, -0.5, 0, 0.5, 1, 1.5]);
+    expect(floorRules(0.5, 1.2)).toEqual([
+      -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2,
+    ]);
+  });
+
+  it("puts a line on the anchor, so the squares line up with the solid", () => {
+    // A box 3 units wide reaches 1.5 either side of its centre; anchored on
+    // that edge, the ruling lands on it and on every unit across the box.
+    expect(floorRules(1, 2.5, -1.5)).toContain(-1.5);
+    expect(floorRules(1, 2.5, -1.5)).toContain(1.5);
+    expect(floorRules(1, 2.5, -1.5)).toContain(0.5);
+  });
+
+  it("covers the floor wherever the anchor sits inside a square", () => {
+    for (const anchor of [-7.3, -0.4, 0, 0.9, 12.6]) {
+      const rules = floorRules(0.5, 2, anchor);
+      expect(Math.min(...rules)).toBeLessThanOrEqual(-2);
+      expect(Math.max(...rules)).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it("caps a floor that would be ruled into a solid block", () => {

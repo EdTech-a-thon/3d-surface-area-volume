@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fitFraction, gridLayers, gridScale } from "./grid";
 
 describe("gridScale", () => {
-  it("keeps the dots readably apart at any zoom", () => {
+  it("keeps the lines readably apart at any zoom", () => {
     for (const pixelsPerUnit of [0.03, 1, 7.4, 146, 2500]) {
       const { step, gap } = gridScale(pixelsPerUnit);
       expect(gap).toBeGreaterThanOrEqual(26);
@@ -34,6 +34,15 @@ describe("gridScale", () => {
       ).toBeLessThan(1e-9);
       expect(Math.round(split)).toBeGreaterThan(1);
     }
+  });
+
+  it("holds the finer ruling well under the one it divides", () => {
+    // Otherwise every square looks like every other square, and there is no
+    // reading off which of them is the one the key to the grid names.
+    const ink = gridLayers(0.55, 0.75);
+    expect(ink.fine).toBeLessThan(0.55 * 0.5);
+    // Still composited to exactly the ink the coarse ruling is asked for.
+    expect(1 - (1 - ink.coarse) * (1 - ink.fine)).toBeCloseTo(0.55, 10);
   });
 
   it("hands over to the finer step without the marks ever jumping", () => {

@@ -4,6 +4,7 @@
     approximateText,
     formatApproximate,
   } from "$lib/domain/format";
+  import { t } from "$lib/i18n/index.svelte";
 
   let {
     value,
@@ -27,9 +28,7 @@
     class="group/approx cursor-help rounded align-baseline whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-accent {className}"
     data-testid={testid}
     aria-pressed={expanded}
-    aria-label={expanded
-      ? detailed
-      : `${short}. Show more decimal places: ${detailed}`}
+    aria-label={expanded ? detailed : t("approx.more", { short, detailed })}
     onclick={() => (expanded = !expanded)}
   >
     {#if expanded}

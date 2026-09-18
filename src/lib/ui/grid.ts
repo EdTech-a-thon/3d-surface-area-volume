@@ -1,11 +1,11 @@
 /**
  * How far apart to space a measured grid: the ruling on the floor under the
- * solid, and the dots behind the net.
+ * solid, and the squares behind the net.
  *
  * Both views scale their drawing to fit the screen, so a cube with edge 2 and a
  * cube with edge 20 are drawn exactly the same size. The grid is what puts the
  * size back: its marks are a fixed distance apart *in the shape's own units*, so
- * a growing solid swallows more of them and a shrinking one lets go. The step is
+ * a growing shape covers more of them and a shrinking one lets go. The step is
  * always a round number — 0.1, 0.2, 1, 2, 10 … — so that what the grid measures
  * can be counted off it.
  *
@@ -21,7 +21,7 @@
  * through a hand-over.
  */
 export interface GridScale {
-  /** Distance between neighbouring dots, in the shape's length units. */
+  /** Distance between neighbouring lines, in the shape's length units. */
   readonly step: number;
   /** The same distance on screen, in CSS pixels. */
   readonly gap: number;
@@ -85,9 +85,23 @@ export function gridLayers(
   base: number,
   fade: number,
 ): { coarse: number; fine: number } {
-  const fine = base * fade;
+  const fine = base * fade ** HOLD_BACK;
   return { coarse: (base - fine) / (1 - fine), fine };
 }
+
+/**
+ * How much the finer ruling is held back on its way in.
+ *
+ * It has to arrive at full strength exactly at the hand-over — a step past that
+ * it *is* the ruling, and anything less than full strength there would be a
+ * jump — but it need not get there evenly. Fading it in straight makes the
+ * sub-lines nearly as dark as the lines they divide for most of the range, and
+ * then a square is just a square: there is no telling which of them is the one
+ * the key names. Holding them back keeps that reading obvious over almost the
+ * whole range, at the cost of the last stretch before the hand-over, where the
+ * two rulings are about to swap roles anyway.
+ */
+const HOLD_BACK = 3;
 
 /**
  * How much of the available room a shape of this size should fill.

@@ -23,6 +23,9 @@ export default tseslint.config(
   },
   {
     ignores: [
+      // Agent worktrees are checked out inside the project, each with its own
+      // build output; only this checkout's sources are ours to lint.
+      ".claude/",
       ".svelte-kit/",
       "build/",
       "dist/",

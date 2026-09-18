@@ -6,9 +6,9 @@
  * 20 cm cube come out the same size. The floor is what puts the size back: it is
  * a flat plane at the foot of the solid, ruled a round number of units apart, so
  * a growing solid straddles more squares and a shrinking one lets them go. The
- * spacing comes from {@link gridScale}, exactly as the old backdrop of dots did;
- * what is new is that the ruling lies down in the scene with the solid instead of
- * standing behind it, which is what makes it read as ground rather than wallpaper.
+ * spacing comes from {@link gridScale}, the same one the net is ruled to; what is
+ * new is that the ruling lies down in the scene with the solid instead of standing
+ * behind it, which is what makes it read as ground rather than wallpaper.
  */
 import { projectPoint, rotatePoint, type Vec3 } from "$lib/domain/geometry3d";
 
@@ -61,16 +61,27 @@ export function floorPlane(
 
 /**
  * Where to rule the floor, in units from the solid's base: every multiple of
- * `step` out to `radius`, in both directions.
+ * `step` out to `radius`, in both directions, offset so that one line falls on
+ * `anchor`.
+ *
+ * The anchor is the edge of the solid's own footprint, not its centre. Ruling
+ * from the centre puts the lines half a square out of step with a box whose
+ * width is an odd number of squares, and then the squares along an edge cannot
+ * be counted: the edge starts and ends in the middle of one. Anchored on the
+ * edge instead, a 3 × 2 box covers exactly three squares by two, which is the
+ * whole point of ruling the floor in the shape's own units.
  */
-export function floorRules(step: number, radius: number): number[] {
+export function floorRules(step: number, radius: number, anchor = 0): number[] {
   if (!(step > 0) || !(radius > 0)) return [0];
-  const reach = Math.min(Math.ceil(radius / step), MAX_RULES);
+  // Shift the anchor into the first square either side of the origin, so the
+  // count below stays about the floor's size rather than the solid's position.
+  const offset = anchor - Math.round(anchor / step) * step;
+  const reach = Math.min(Math.ceil(radius / step) + 1, MAX_RULES);
   const rules: number[] = [];
   // Relative precision, not absolute: these are the shape's own units, and the
   // shape may be measured in thousands or in thousandths.
   for (let i = -reach; i <= reach; i += 1)
-    rules.push(Number((i * step).toPrecision(9)));
+    rules.push(Number((offset + i * step).toPrecision(9)));
   return rules;
 }
 

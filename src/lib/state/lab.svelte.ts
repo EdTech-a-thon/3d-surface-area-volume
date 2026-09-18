@@ -1,5 +1,5 @@
 /**
- * Shape Lab presentation state.
+ * Geometric Solids presentation state.
  *
  * Geometry state (solid kind and its last valid dimensions) is kept apart from
  * input drafts and from presentation state. Rotating, highlighting, relabelling

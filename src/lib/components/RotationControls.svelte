@@ -1,10 +1,21 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
   import type { LabState } from "$lib/state/lab.svelte";
 
   let {
     lab,
     reducedMotion = false,
-  }: { lab: LabState; reducedMotion?: boolean } = $props();
+    compact = false,
+  }: {
+    lab: LabState;
+    reducedMotion?: boolean;
+    /**
+     * Drop the nudge arrows and keep only recentre and spin. In a floating
+     * window the shape is close enough to drag directly, so the arrows are the
+     * part of this row that can go.
+     */
+    compact?: boolean;
+  } = $props();
 
   const STEP = 0.18;
   const isNet = $derived(lab.view === "net");
@@ -15,50 +26,52 @@
 <div
   class="pointer-events-auto flex items-center gap-0.5 rounded-xl border border-rule/70 bg-panel/85 p-1 shadow-lg shadow-ink/10 backdrop-blur-md"
   role="group"
-  aria-label="Rotate the 3D view"
+  aria-label={t("rotation.label")}
 >
-  <button
-    type="button"
-    class={button}
-    data-testid="rotate-left"
-    disabled={isNet}
-    aria-label="Rotate left"
-    onclick={() => lab.rotateBy(-STEP, 0)}>←</button
-  >
-  <button
-    type="button"
-    class={button}
-    data-testid="rotate-up"
-    disabled={isNet}
-    aria-label="Tip back"
-    onclick={() => lab.rotateBy(0, -STEP)}>↑</button
-  >
-  <button
-    type="button"
-    class={button}
-    data-testid="rotate-down"
-    disabled={isNet}
-    aria-label="Tip forward"
-    onclick={() => lab.rotateBy(0, STEP)}>↓</button
-  >
-  <button
-    type="button"
-    class={button}
-    data-testid="rotate-right"
-    disabled={isNet}
-    aria-label="Rotate right"
-    onclick={() => lab.rotateBy(STEP, 0)}>→</button
-  >
+  {#if !compact}
+    <button
+      type="button"
+      class={button}
+      data-testid="rotate-left"
+      disabled={isNet}
+      aria-label={t("rotation.left")}
+      onclick={() => lab.rotateBy(-STEP, 0)}>←</button
+    >
+    <button
+      type="button"
+      class={button}
+      data-testid="rotate-up"
+      disabled={isNet}
+      aria-label={t("rotation.back")}
+      onclick={() => lab.rotateBy(0, -STEP)}>↑</button
+    >
+    <button
+      type="button"
+      class={button}
+      data-testid="rotate-down"
+      disabled={isNet}
+      aria-label={t("rotation.forward")}
+      onclick={() => lab.rotateBy(0, STEP)}>↓</button
+    >
+    <button
+      type="button"
+      class={button}
+      data-testid="rotate-right"
+      disabled={isNet}
+      aria-label={t("rotation.right")}
+      onclick={() => lab.rotateBy(STEP, 0)}>→</button
+    >
 
-  <span class="mx-0.5 h-5 w-px bg-rule" aria-hidden="true"></span>
+    <span class="mx-0.5 h-5 w-px bg-rule" aria-hidden="true"></span>
+  {/if}
 
   <button
     type="button"
     class={button}
     data-testid="reset-view"
     disabled={isNet}
-    aria-label="Reset the view"
-    title="Reset the view"
+    aria-label={t("rotation.reset")}
+    title={t("rotation.reset")}
     onclick={() => lab.resetView()}
   >
     <svg
@@ -89,12 +102,12 @@
     data-testid="toggle-spin"
     aria-pressed={lab.autoRotate}
     disabled={isNet || reducedMotion}
-    aria-label={lab.autoRotate ? "Stop spinning" : "Spin the shape"}
+    aria-label={lab.autoRotate ? t("rotation.stop") : t("rotation.spin")}
     title={reducedMotion
-      ? "Continuous spinning is off because this device asks for reduced motion"
+      ? t("rotation.reduced")
       : lab.autoRotate
-        ? "Stop spinning"
-        : "Spin the shape"}
+        ? t("rotation.stop")
+        : t("rotation.spin")}
     onclick={() => lab.toggleAutoRotate()}
   >
     <svg

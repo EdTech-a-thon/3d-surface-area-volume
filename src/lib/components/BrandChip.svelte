@@ -1,5 +1,6 @@
 <script lang="ts">
   import { asset, resolve } from "$app/paths";
+  import { t } from "$lib/i18n/index.svelte";
   import type { LabState } from "$lib/state/lab.svelte";
 
   /**
@@ -56,8 +57,8 @@
       aria-expanded={open}
       aria-controls="brand-panel"
       aria-pressed={showing}
-      aria-label="Built by teacher.dev — put the logo on the stage as a solid"
-      title="Built by teacher.dev"
+      aria-label={t("brand.action")}
+      title={t("brand.title")}
       class="grid h-10 w-10 cursor-pointer place-items-center rounded-lg transition {showing
         ? 'bg-accent-soft ring-2 ring-accent'
         : 'hover:bg-ink/5'}"
@@ -95,19 +96,19 @@
         target="_blank"
         rel="noopener noreferrer"
         class="text-sm font-bold text-ink transition hover:text-accent"
-        >Built by teacher.dev</a
+        >{t("common.builtBy")}</a
       >
       <p class="flex items-center gap-2 text-xs font-bold text-ink-soft">
         <a
           href={resolve("/about")}
           data-testid="brand-about"
-          class="transition hover:text-accent">about</a
+          class="transition hover:text-accent">{t("common.about")}</a
         >
         <span aria-hidden="true" class="text-rule">·</span>
         <a
           href={resolve("/privacy")}
           data-testid="brand-privacy"
-          class="transition hover:text-accent">privacy</a
+          class="transition hover:text-accent">{t("common.privacy")}</a
         >
       </p>
     </div>

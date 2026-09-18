@@ -1,9 +1,9 @@
 <script lang="ts">
   import MathText from "$lib/components/MathText.svelte";
   import { formatExact } from "$lib/domain/exact";
-  import { UNITS } from "$lib/domain/format";
   import { annularSectorPath, sectorPath, type Net } from "$lib/domain/nets";
   import { DIMENSION_MAX } from "$lib/domain/types";
+  import { domainText, t, unitLabels } from "$lib/i18n/index.svelte";
   import {
     surfaceTarget,
     type LabState,
@@ -17,6 +17,8 @@
   } from "$lib/ui/colors";
   import { fitFraction, gridLayers, gridScale } from "$lib/ui/grid";
   import { splitMath } from "$lib/ui/mathText";
+  import { measureBox } from "$lib/ui/measureBox";
+  import { stageRise, stageRoom } from "$lib/ui/stage";
   import {
     RADICAL_RULE_OVERLAP,
     RADICAL_RULE_WEIGHT,
@@ -27,7 +29,30 @@
     radicalTickPath,
   } from "$lib/ui/radical";
 
-  let { lab, net }: { lab: LabState; net: Net } = $props();
+  let {
+    lab,
+    net,
+    compact = false,
+    lift = 0,
+    chrome = 0,
+    onGrid,
+  }: {
+    lab: LabState;
+    net: Net;
+    /** Shorten the unit words where the window has no room for them. */
+    compact?: boolean;
+    /** How far above the middle to hold the net, in CSS pixels. */
+    lift?: number;
+    /** The height the panels over the net have taken, as the solid view sees it. */
+    chrome?: number;
+    /**
+     * Where to report the size of one grid square, in the shape's own units.
+     * The step is settled here, out of the fit to this element, but it is read
+     * off a key in the corner of the lab: only the lab knows what room the
+     * panels have left in that corner.
+     */
+    onGrid?: (step: number) => void;
+  } = $props();
 
   // Every piece is already in the solid's length units, so one viewBox scales
   // the whole net at once and no piece can be resized on its own. Widening the
@@ -35,6 +60,14 @@
   // that single shared scale while letting the net fill the screen.
   let boxWidth = $state(900);
   let boxHeight = $state(650);
+  /**
+   * Whether those are the element's own numbers yet, rather than the guess the
+   * component starts with. The drawing survives a wrong guess — the viewBox
+   * scales it to fit either way — but the labels over it are placed in CSS
+   * pixels, so on a prerendered page they would paint somewhere near the top
+   * left and jump into place at hydration. They wait for the measurement.
+   */
+  let measured = $state(false);
 
   /**
    * Half the width of the largest net the sliders reach: a cube of edge 20 lays
@@ -48,7 +81,11 @@
     const pad = Math.max(width, height) * 0.07;
     const wanted = { w: width + pad * 2, h: height + pad * 2 };
 
-    const aspect = Math.max(boxWidth, 1) / Math.max(boxHeight, 1);
+    // Panels over the drawing take height from the net exactly as they do from
+    // the solid, so the sheet is laid out in the clear band between them and the
+    // viewBox is then stretched back over the whole element.
+    const band = stageRoom(boxHeight, chrome) * 2;
+    const aspect = Math.max(boxWidth, 1) / band;
     const fitted =
       wanted.w / wanted.h < aspect
         ? { w: wanted.h * aspect, h: wanted.h }
@@ -56,16 +93,21 @@
     // A small net is drawn small, exactly as a small solid is: widening the
     // viewBox past the net leaves it the same share of the screen its solid had.
     const zoom = fitFraction(Math.max(width, height) / 2, FULL_EXTENT);
-    const view = { w: fitted.w / zoom, h: fitted.h / zoom };
+    const spread = Math.max(boxHeight, 1) / band;
+    const view = { w: fitted.w / zoom, h: (fitted.h / zoom) * spread };
 
     const centerX = (net.bounds.minX + net.bounds.maxX) / 2;
     const centerY = (net.bounds.minY + net.bounds.maxY) / 2;
     // Length of one CSS pixel, in the net's own units.
     const pixel = view.w / Math.max(boxWidth, 1);
+    // The floating window keeps its panels along the bottom edge, so the net
+    // steps up out of their way exactly as the solid does. Moving the window
+    // down over the net is what lifts the net on screen.
+    const rise = stageRise(boxHeight, lift) * (view.h / Math.max(boxHeight, 1));
     return {
       box: {
         x: centerX - view.w / 2,
-        y: centerY - view.h / 2,
+        y: centerY - view.h / 2 + rise,
         w: view.w,
         h: view.h,
       },
@@ -79,14 +121,35 @@
   const grid = $derived(gridScale(1 / layout.pixel));
   const GRID_PATTERN_ID = "net-measured-grid";
   const FINE_GRID_PATTERN_ID = "net-measured-grid-fine";
-  /** How dark the dots sit against the backdrop. */
-  const GRID_INK = 0.35;
+  /** How dark the ruling sits against the backdrop. */
+  const GRID_INK = 0.45;
   const gridInk = $derived(gridLayers(GRID_INK, grid.fade));
+
+  // Report the step rather than draw it: the key to the grid lives with the
+  // totals, where the other numbers about the shape are.
+  $effect(() => {
+    onGrid?.(grid.step);
+  });
+
   const codeSize = $derived(layout.pixel * 20);
   const sizeTextSize = $derived(layout.pixel * 13);
   const strokeWidth = $derived(layout.pixel * 1.5);
 
-  const areaUnit = $derived(UNITS[lab.unit].area);
+  /**
+   * A piece says its size on one line unless the text asks for more. Only the
+   * pyramid does: its four faces are the longest label in any net, and they are
+   * read where the net is at its narrowest. Every square root is drawn per
+   * line, so a break costs the signs nothing.
+   */
+  function sizeLines(text: string): string[] {
+    return text.split("\n");
+  }
+  /** Line spacing for a size label that runs to more than one line. */
+  const LINE_STEP = 1.2;
+
+  const areaUnit = $derived(
+    compact ? unitLabels(lab.unit).areaShort : unitLabels(lab.unit).area,
+  );
 
   /**
    * One area chip per measured piece, laid over the net the way the badges are
@@ -99,8 +162,11 @@
       if (!lab.isActive(target)) return [];
       const surface = surfaceOf(piece.surfaceId);
       if (!surface) return [];
-      // Below the code and the size line the piece already carries.
-      const below = piece.labelAt[1] + codeSize * 0.95 + sizeTextSize * 2;
+      // Below the code and the size lines the piece already carries.
+      const below =
+        piece.labelAt[1] +
+        codeSize * 0.95 +
+        sizeTextSize * (2 + (sizeLines(piece.sizeText).length - 1) * LINE_STEP);
       return [
         {
           key: index,
@@ -207,15 +273,18 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
   class="relative h-full w-full"
-  bind:clientWidth={boxWidth}
-  bind:clientHeight={boxHeight}
+  use:measureBox={(width, height) => {
+    boxWidth = width;
+    boxHeight = height;
+    measured = true;
+  }}
 >
   <svg
     bind:this={svgEl}
     class="h-full w-full"
     {viewBox}
     role="img"
-    aria-label="Flat net of the {lab.model.name}"
+    aria-label={t("net.description", { name: domainText(lab.model.name) })}
     data-testid="net-view"
     onpointerover={(event) => lab.hover(targetOf(event))}
     onpointerleave={() => lab.hover(null)}
@@ -225,21 +294,26 @@
     }}
   >
     <defs>
-      <!-- Dots a round number of units apart, in the net's own units, so the
-           pieces spread over more of them as the solid grows. -->
+      <!-- Squares a round number of units across, in the net's own units, so
+           the pieces cover more of them as the solid grows. The lattice is left
+           where the net's own origin puts it — every net is laid out from a
+           corner of a piece — so the ruling runs along the pieces' edges and
+           the squares along a side can be counted, exactly as they can on the
+           floor under the solid. -->
       {#each [{ id: GRID_PATTERN_ID, step: grid.step }, { id: FINE_GRID_PATTERN_ID, step: grid.fineStep }] as lattice (lattice.id)}
         <pattern
           id={lattice.id}
           width={lattice.step}
           height={lattice.step}
           patternUnits="userSpaceOnUse"
-          patternTransform="translate({-lattice.step / 2} {-lattice.step / 2})"
         >
-          <circle
-            cx={lattice.step / 2}
-            cy={lattice.step / 2}
-            r={layout.pixel * 1.6}
-            fill="#46606f"
+          <!-- Two sides of the square only: the other two belong to the
+               neighbouring tiles, and drawing all four doubles every line. -->
+          <path
+            d="M0 {lattice.step} V0 H{lattice.step}"
+            fill="none"
+            stroke="#46606f"
+            stroke-width={layout.pixel}
           />
         </pattern>
       {/each}
@@ -358,22 +432,26 @@
           fill="#0b1a22"
           pointer-events="none">{surface?.code ?? ""}</text
         >
-        <text
-          x={piece.labelAt[0]}
-          y={piece.labelAt[1] + codeSize * 0.95}
-          class="label-halo"
-          font-size={sizeTextSize}
-          stroke-width={sizeTextSize * 0.35}
-          text-anchor="middle"
-          dominant-baseline="central"
-          fill="#334155"
-          pointer-events="none"
-          >{#each splitMath(piece.sizeText) as segment, index (index)}{#if segment.kind === "radical"}<tspan
-                class="net-radicand"
-                dx={signGap}>{segment.radicand}</tspan
-              ><tspan dx={sizeTextSize * 0.12}>&#8203;</tspan
-              >{:else}{segment.text}{/if}{/each}</text
-        >
+        {#each sizeLines(piece.sizeText) as line, lineIndex (lineIndex)}
+          <text
+            x={piece.labelAt[0]}
+            y={piece.labelAt[1] +
+              codeSize * 0.95 +
+              lineIndex * sizeTextSize * LINE_STEP}
+            class="label-halo"
+            font-size={sizeTextSize}
+            stroke-width={sizeTextSize * 0.35}
+            text-anchor="middle"
+            dominant-baseline="central"
+            fill="#334155"
+            pointer-events="none"
+            >{#each splitMath(line) as segment, index (index)}{#if segment.kind === "radical"}<tspan
+                  class="net-radicand"
+                  dx={signGap}>{segment.radicand}</tspan
+                ><tspan dx={sizeTextSize * 0.12}>&#8203;</tspan
+                >{:else}{segment.text}{/if}{/each}</text
+          >
+        {/each}
       </g>
     {/each}
 
@@ -428,15 +506,20 @@
   </svg>
 
   <!-- The areas live above the drawing as real buttons, matching the badges on
-       the solid, so a measured piece reads the same in either view. -->
-  <div class="pointer-events-none absolute inset-0 overflow-hidden">
+       the solid, so a measured piece reads the same in either view. They are
+       placed in CSS pixels, so they stay hidden until the stage has been
+       measured: see `measured`. -->
+  <div
+    class="pointer-events-none absolute inset-0 overflow-hidden"
+    class:invisible={!measured}
+  >
     {#each chips as chip (chip.key)}
       <button
         type="button"
         data-testid="net-surface-{chip.surface.localId}"
         data-target={chip.target}
         aria-pressed={chip.pinned}
-        aria-label="{chip.surface.name}{lab.showFormulas
+        aria-label="{domainText(chip.surface.name)}{lab.showFormulas
           ? `, ${chip.surface.formula}`
           : ''}{lab.answersVisible ? `, ${chip.value} ${areaUnit}` : ''}"
         class="absolute max-w-[14rem] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-lg border px-2 py-1 text-left font-mono text-xs leading-tight shadow-lg shadow-ink/20 backdrop-blur-sm {reach(
@@ -454,7 +537,9 @@
         onclick={() => lab.togglePin(chip.target)}
       >
         <span class="block font-sans font-bold"
-          >{chip.surface.code} · {chip.surface.name}{#if lab.showFormulas}
+          >{chip.surface.code} · {domainText(
+            chip.surface.name,
+          )}{#if lab.showFormulas}
             · <MathText text={chip.surface.formula} />
           {/if}</span
         >

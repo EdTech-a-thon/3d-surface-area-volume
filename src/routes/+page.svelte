@@ -1,25 +1,31 @@
 <script lang="ts">
-  import MeasureBar from "$lib/components/MeasureBar.svelte";
-  import NetView from "$lib/components/NetView.svelte";
-  import RotationControls from "$lib/components/RotationControls.svelte";
-  import ShapeBar from "$lib/components/ShapeBar.svelte";
-  import SolidView from "$lib/components/SolidView.svelte";
-  import TotalsCard from "$lib/components/TotalsCard.svelte";
-  import ViewToggle from "$lib/components/ViewToggle.svelte";
-  import BrandChip from "$lib/components/BrandChip.svelte";
-  import { UNITS, UNIT_ORDER } from "$lib/domain/format";
-  import type { UnitKey } from "$lib/domain/format";
+  import ShapeLab from "$lib/components/ShapeLab.svelte";
+  import { t } from "$lib/i18n/index.svelte";
   import { LabState } from "$lib/state/lab.svelte";
-  import { onMount } from "svelte";
+  import {
+    copyStyles,
+    documentPictureInPicture,
+  } from "$lib/ui/documentPictureInPicture";
+  import { mount, onMount, tick, unmount } from "svelte";
 
   const lab = new LabState();
 
   let reducedMotion = $state(false);
   /** Flipped once the page is live in the browser; nothing responds before that. */
   let ready = $state(false);
+  let floatSupported = $state(false);
+  let floatingWindow = $state<Window | null>(null);
+  let floatingApp: ReturnType<typeof mount> | null = null;
+  let floatError = $state<string | null>(null);
 
   onMount(() => {
     ready = true;
+    floatSupported = documentPictureInPicture(window) !== null;
+
+    return () => {
+      if (floatingApp) void unmount(floatingApp);
+      floatingWindow?.close();
+    };
   });
 
   $effect(() => {
@@ -32,81 +38,116 @@
     motion.addEventListener("change", apply);
     return () => motion.removeEventListener("change", apply);
   });
+
+  async function removeFloatingApp() {
+    if (!floatingApp) return;
+    const app = floatingApp;
+    floatingApp = null;
+    await unmount(app);
+  }
+
+  async function restoreToTab() {
+    await removeFloatingApp();
+    floatingWindow = null;
+  }
+
+  async function closeFloatingWindow() {
+    const current = floatingWindow;
+    await restoreToTab();
+    current?.close();
+  }
+
+  async function openFloatingWindow() {
+    const controller = documentPictureInPicture(window);
+    if (!controller) return;
+
+    let pip: Window | null = null;
+    floatError = null;
+    try {
+      pip = await controller.requestWindow({
+        width: 600,
+        height: 600,
+        preferInitialWindowPlacement: false,
+      });
+      pip.document.title = t("app.name");
+      copyStyles(document, pip.document);
+      pip.addEventListener(
+        "pagehide",
+        () => {
+          void restoreToTab();
+        },
+        { once: true },
+      );
+
+      // Remove the copy in the tab before mounting into the new document. A new
+      // Svelte root is important here: delegated events belong to the document
+      // where a component was mounted and would not survive moving the old DOM.
+      floatingWindow = pip;
+      await tick();
+      floatingApp = mount(ShapeLab, {
+        target: pip.document.body,
+        props: {
+          lab,
+          reducedMotion,
+          ready: true,
+          animationWindow: pip,
+          floating: true,
+        },
+      });
+    } catch (error) {
+      if (floatingApp) await removeFloatingApp();
+      floatingWindow = null;
+      pip?.close();
+      floatError = error instanceof Error ? error.message : t("float.failed");
+    }
+  }
 </script>
 
 <svelte:head>
-  <title>Shape Lab — surface area and volume</title>
+  <title>{t("app.pageTitle")}</title>
+  <meta name="description" content={t("app.description")} />
 </svelte:head>
 
-<!-- The shape owns the screen. Everything else is a small panel floating over
-     it at a corner, so nothing competes with the solid for attention. -->
-<div
-  class="relative h-[100dvh] w-full overflow-hidden bg-gradient-to-b from-paper to-accent-soft/50"
-  data-ready={ready ? "true" : undefined}
->
-  <h1 class="sr-only">Shape Lab</h1>
-
-  <div class="absolute inset-0">
-    {#if lab.view === "net" && lab.net}
-      <NetView {lab} net={lab.net} />
-    {:else}
-      <SolidView {lab} {reducedMotion} />
-    {/if}
-  </div>
-
-  <p class="sr-only" aria-live="polite" data-testid="answer-state">
-    {lab.answersVisible
-      ? "Final answers are visible."
-      : "Final answers are hidden."}
-  </p>
-
-  <!-- Top left: who made this, then which solid. The mark leads the row the way
-       a masthead leads a page, and the picker keeps the width it had: three
-       icons to a row on a phone, where the view controls opposite need the rest
-       of the width; one row on a big screen. -->
-  <div
-    class="pointer-events-none absolute top-2 left-2 z-20 flex items-start gap-1.5"
+{#if floatingWindow}
+  <main
+    data-testid="floating-placeholder"
+    class="grid min-h-[100dvh] place-items-center bg-gradient-to-b from-paper to-accent-soft/50 p-6 text-center"
   >
-    <BrandChip {lab} />
-    <div class="max-w-[9.5rem] sm:max-w-[20rem]">
-      <ShapeBar {lab} />
-    </div>
-  </div>
-
-  <!-- Top right: which view, and what the numbers are called. On a phone the
-       top edge is the tightest row on screen, so the unit select drops onto its
-       own line to leave the mark and the picker opposite their full width. -->
-  <div
-    class="pointer-events-none absolute top-2 right-2 z-20 flex max-w-[7.5rem] flex-wrap justify-end gap-1.5 sm:max-w-none"
-  >
-    <ViewToggle {lab} />
-    <label class="sr-only" for="unit-select">Units</label>
-    <select
-      id="unit-select"
-      data-testid="unit-select"
-      class="pointer-events-auto cursor-pointer rounded-xl border border-rule/70 bg-panel/85 px-2 py-1 text-xs font-bold shadow-lg shadow-ink/10 backdrop-blur-md"
-      value={lab.unit}
-      onchange={(event) => (lab.unit = event.currentTarget.value as UnitKey)}
-    >
-      {#each UNIT_ORDER as key (key)}
-        <option value={key}>{UNITS[key].linear}</option>
-      {/each}
-    </select>
-  </div>
-
-  <!-- Bottom: the dimensions on the left, the answers on the right, and the
-       view controls between them. The view controls are centred on the screen
-       rather than on the gap, so they stay put as the panels either side change
-       width. On a phone they drop to their own row underneath. -->
-  <div
-    class="pointer-events-none absolute inset-x-2 bottom-2 z-20 flex flex-wrap items-end justify-between gap-2"
-  >
-    <MeasureBar {lab} />
     <div
-      class="order-last flex w-full justify-center sm:absolute sm:bottom-0 sm:left-1/2 sm:order-none sm:w-auto sm:-translate-x-1/2"
+      class="max-w-md rounded-2xl border border-rule bg-panel p-8 shadow-xl shadow-ink/10"
     >
-      <RotationControls {lab} {reducedMotion} />
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        class="mx-auto mb-4 h-12 w-12 text-accent"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+      >
+        <rect x="2.5" y="4" width="19" height="15" rx="2.5" />
+        <rect x="12" y="10" width="7" height="6" rx="1" fill="currentColor" />
+      </svg>
+      <h1 class="text-xl font-bold">{t("floating.title")}</h1>
+      <p class="mt-2 text-sm text-ink-soft">
+        {t("floating.instructions")}
+      </p>
+      <button
+        type="button"
+        data-testid="return-to-tab"
+        class="mt-5 cursor-pointer rounded-xl bg-accent px-4 py-2 text-sm font-bold text-white shadow-md transition hover:brightness-110"
+        onclick={closeFloatingWindow}
+      >
+        {t("floating.return")}
+      </button>
     </div>
-    <TotalsCard {lab} />
-  </div>
-</div>
+  </main>
+{:else}
+  <ShapeLab
+    {lab}
+    {reducedMotion}
+    {ready}
+    {floatSupported}
+    onFloat={openFloatingWindow}
+    {floatError}
+  />
+{/if}

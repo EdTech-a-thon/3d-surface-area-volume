@@ -16,3 +16,6 @@ playwright-report
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Agent worktrees, checked out inside the project
+.claude/worktrees/
