@@ -6,7 +6,14 @@
  * its neighbours. Coordinates use SVG conventions: y grows downwards.
  */
 import { exactSqrt, formatExact } from "./exact";
-import { add, fromTenths, pow, toDecimalString } from "./rational";
+import {
+  add,
+  fromTenths,
+  mul,
+  pow,
+  rational,
+  toDecimalString,
+} from "./rational";
 import type { Dimensions, SolidKind } from "./types";
 
 export type Vec2 = readonly [number, number];
@@ -33,6 +40,15 @@ export type NetPiece =
       readonly shape: "sector";
       readonly apex: Vec2;
       readonly radius: number;
+      /** Start angle in radians, measured in SVG coordinates. */
+      readonly startAngle: number;
+      readonly sweepAngle: number;
+    })
+  | (PieceBase & {
+      readonly shape: "annularSector";
+      readonly apex: Vec2;
+      readonly innerRadius: number;
+      readonly outerRadius: number;
       /** Start angle in radians, measured in SVG coordinates. */
       readonly startAngle: number;
       readonly sweepAngle: number;
@@ -103,15 +119,22 @@ function boundsOf(pieces: readonly NetPiece[]): NetBounds {
       include(piece.center[0] - piece.radius, piece.center[1] - piece.radius);
       include(piece.center[0] + piece.radius, piece.center[1] + piece.radius);
     } else {
-      include(piece.apex[0], piece.apex[1]);
-      // Sample the arc rather than guess which extremes it reaches.
+      // Sample the arc rather than guess which cardinal extremes it reaches.
+      // A sector also contains its apex; an annular sector does not.
+      if (piece.shape === "sector") include(piece.apex[0], piece.apex[1]);
+      const radii =
+        piece.shape === "sector"
+          ? [piece.radius]
+          : [piece.innerRadius, piece.outerRadius];
       const steps = 64;
-      for (let i = 0; i <= steps; i += 1) {
-        const angle = piece.startAngle + (piece.sweepAngle * i) / steps;
-        include(
-          piece.apex[0] + piece.radius * Math.cos(angle),
-          piece.apex[1] + piece.radius * Math.sin(angle),
-        );
+      for (const radius of radii) {
+        for (let i = 0; i <= steps; i += 1) {
+          const angle = piece.startAngle + (piece.sweepAngle * i) / steps;
+          include(
+            piece.apex[0] + radius * Math.cos(angle),
+            piece.apex[1] + radius * Math.sin(angle),
+          );
+        }
       }
     }
   }
@@ -133,6 +156,30 @@ function boxNet(kind: SolidKind, l: number, w: number, h: number): Net {
   return { pieces, bounds: boundsOf(pieces) };
 }
 
+/** Segments per rounded corner when the logo tile is drawn flat. */
+const TILE_CORNER_SEGMENTS = 8;
+
+/**
+ * The logo tile as one polygon: the square of side m grown outwards by the
+ * corner radius c. The arcs are tessellated, as curved surfaces are everywhere
+ * else here — the drawing approximates, the areas in solids.ts do not.
+ */
+function tilePolygon(cx: number, cy: number, m: number, c: number): Vec2[] {
+  const half = m / 2;
+  const centres: readonly (readonly [number, number])[] = [
+    [half, half],
+    [-half, half],
+    [-half, -half],
+    [half, -half],
+  ];
+  return centres.flatMap(([ox, oy], k) =>
+    Array.from({ length: TILE_CORNER_SEGMENTS + 1 }, (_, i): Vec2 => {
+      const angle = ((k + i / TILE_CORNER_SEGMENTS) * Math.PI) / 2;
+      return [cx + ox + c * Math.cos(angle), cy + oy + c * Math.sin(angle)];
+    }),
+  );
+}
+
 export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
   const id = (local: string) => `${kind}:${local}`;
 
@@ -149,15 +196,20 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
         exactSqrt(add(pow(fromTenths(a), 2), pow(fromTenths(b), 2))),
       );
       const triangleText = `legs ${dec(a)} and ${dec(b)}`;
+      // The strip runs leg a, leg b, hypotenuse, so going along it the right
+      // angle falls at the crease between the first two — which is where each
+      // end triangle's right angle has to sit for the net to fold up. Put it at
+      // the near corner instead and the net still draws correctly but cannot be
+      // assembled: the triangles come out mirrored against the strip.
       const front: readonly Vec2[] = [
         [0, 0],
         [a, 0],
-        [0, -b],
+        [a, -b],
       ];
       const back: readonly Vec2[] = [
         [0, p],
         [a, p],
-        [0, p + b],
+        [a, p + b],
       ];
       const pieces: NetPiece[] = [
         rectangle(id("faceA"), 0, 0, a, p, `${dec(a)} × ${dec(p)}`),
@@ -182,6 +234,67 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
         pieces,
         bounds: boundsOf(pieces),
       };
+    }
+    case "squarePyramid": {
+      const { b, h } = d;
+      const slant = Math.hypot(h, b / 2);
+      const faceText = `base ${dec(b)}, slant ${formatExact(
+        exactSqrt(
+          add(
+            pow(fromTenths(h), 2),
+            pow(mul(fromTenths(b), rational(1n, 2n)), 2),
+          ),
+        ),
+      )}`;
+      // A square with one congruent triangular face hinged to each edge.
+      const pieces: NetPiece[] = [
+        rectangle(id("base"), 0, 0, b, b, `${dec(b)} × ${dec(b)}`),
+        {
+          shape: "polygon",
+          surfaceId: id("back"),
+          sizeText: faceText,
+          points: [
+            [0, 0],
+            [b, 0],
+            [b / 2, -slant],
+          ],
+          labelAt: [b / 2, -slant / 3],
+        },
+        {
+          shape: "polygon",
+          surfaceId: id("front"),
+          sizeText: faceText,
+          points: [
+            [0, b],
+            [b, b],
+            [b / 2, b + slant],
+          ],
+          labelAt: [b / 2, b + slant / 3],
+        },
+        {
+          shape: "polygon",
+          surfaceId: id("left"),
+          sizeText: faceText,
+          points: [
+            [0, 0],
+            [0, b],
+            [-slant, b / 2],
+          ],
+          labelAt: [-slant / 3, b / 2],
+        },
+        {
+          shape: "polygon",
+          surfaceId: id("right"),
+          sizeText: faceText,
+          points: [
+            [b, 0],
+            [b, b],
+            [b + slant, b / 2],
+          ],
+          labelAt: [b + slant / 3, b / 2],
+        },
+      ];
+      return { pieces, bounds: boundsOf(pieces) };
     }
     case "cylinder": {
       const { r, h } = d;
@@ -243,6 +356,95 @@ export function buildNet(kind: SolidKind, d: Dimensions): Net | null {
     }
     case "sphere":
       return null;
+    case "logoSlab": {
+      const { m, r, b, h } = d;
+      const slant = Math.hypot(h, b);
+      const topReach = m / 2 + r;
+      const bottomReach = m / 2 + r + b;
+      const gap = Math.max(1, slant * 0.6);
+      const pieces: NetPiece[] = [];
+
+      // Lay the two faces beside one another like parts on a workbench. Keeping
+      // them off the side strip avoids a long top-strip-bottom silhouette and
+      // makes the larger footprint immediately visible next to the smaller top.
+      const topCenter: Vec2 = [topReach, topReach];
+      const topPoints = tilePolygon(topCenter[0], topCenter[1], m, r);
+      pieces.push({
+        shape: "polygon",
+        surfaceId: id("top"),
+        sizeText: `straight side ${dec(m)}, radius ${dec(r)}`,
+        labelAt: topCenter,
+        points: topPoints,
+      });
+
+      const bottomCenter: Vec2 = [
+        2 * topReach + gap + bottomReach,
+        bottomReach,
+      ];
+      const bottomPoints = tilePolygon(
+        bottomCenter[0],
+        bottomCenter[1],
+        m,
+        r + b,
+      );
+      pieces.push({
+        shape: "polygon",
+        surfaceId: id("bottom"),
+        sizeText: `straight side ${dec(m)}, radius ${dec(r + b)}`,
+        labelAt: bottomCenter,
+        points: bottomPoints,
+      });
+
+      // The four congruent straight bevel faces form a compact 2 × 2 swatch
+      // below the faces rather than one long strip.
+      const partsY = Math.max(2 * topReach, 2 * bottomReach) + gap;
+      for (let k = 0; k < 4; k += 1) {
+        const column = k % 2;
+        const row = Math.floor(k / 2);
+        pieces.push(
+          rectangle(
+            id(`flat${k + 1}`),
+            column * (m + gap),
+            partsY + row * (slant + gap),
+            m,
+            slant,
+            `${dec(m)} × t`,
+          ),
+        );
+      }
+
+      // The four rounded corners together are a complete conical frustum. Cut
+      // once and it opens into an annular sector. It sits beside the 2 × 2 side
+      // swatch, making the lower half of the layout another balanced pair.
+      const innerRadius = (r * slant) / b;
+      const outerRadius = ((r + b) * slant) / b;
+      const sweepAngle = (2 * Math.PI * b) / slant;
+      const sideBlockRight = 2 * m + gap;
+      const sideBlockHeight = 2 * slant + gap;
+      const sectorApex: Vec2 = [
+        sideBlockRight + gap + outerRadius,
+        partsY + sideBlockHeight / 2,
+      ];
+      const startAngle = Math.PI - sweepAngle / 2;
+      const middleAngle = startAngle + sweepAngle / 2;
+      const middleRadius = (innerRadius + outerRadius) / 2;
+      pieces.push({
+        shape: "annularSector",
+        surfaceId: id("corners"),
+        sizeText: "radii r and r + b, slant t",
+        apex: sectorApex,
+        innerRadius,
+        outerRadius,
+        startAngle,
+        sweepAngle,
+        labelAt: [
+          sectorApex[0] + middleRadius * Math.cos(middleAngle),
+          sectorApex[1] + middleRadius * Math.sin(middleAngle),
+        ],
+      });
+
+      return { pieces, bounds: boundsOf(pieces) };
+    }
   }
 }
 
@@ -261,4 +463,28 @@ export function sectorPath(
   ];
   const largeArc = sweepAngle > Math.PI ? 1 : 0;
   return `M ${apex[0]} ${apex[1]} L ${start[0]} ${start[1]} A ${radius} ${radius} 0 ${largeArc} 1 ${end[0]} ${end[1]} Z`;
+}
+
+/** SVG path data for the unrolled rounded bevel: one annular sector. */
+export function annularSectorPath(
+  piece: Extract<NetPiece, { shape: "annularSector" }>,
+): string {
+  const { apex, innerRadius, outerRadius, startAngle, sweepAngle } = piece;
+  const point = (radius: number, angle: number): Vec2 => [
+    apex[0] + radius * Math.cos(angle),
+    apex[1] + radius * Math.sin(angle),
+  ];
+  const endAngle = startAngle + sweepAngle;
+  const outerStart = point(outerRadius, startAngle);
+  const outerEnd = point(outerRadius, endAngle);
+  const innerEnd = point(innerRadius, endAngle);
+  const innerStart = point(innerRadius, startAngle);
+  const largeArc = sweepAngle > Math.PI ? 1 : 0;
+  return [
+    `M ${outerStart[0]} ${outerStart[1]}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEnd[0]} ${outerEnd[1]}`,
+    `L ${innerEnd[0]} ${innerEnd[1]}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart[0]} ${innerStart[1]}`,
+    "Z",
+  ].join(" ");
 }

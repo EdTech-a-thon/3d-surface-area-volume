@@ -10,7 +10,6 @@
 </script>
 
 <svelte:head>
-  <title>Shape Lab — surface area and volume</title>
   {#if beaconToken}
     <script
       defer

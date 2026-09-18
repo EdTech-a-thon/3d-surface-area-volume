@@ -4,6 +4,7 @@ const SOLIDS = [
   { kind: "rectangularPrism", surfaceArea: "94", volume: "60" },
   { kind: "cube", surfaceArea: "24", volume: "8" },
   { kind: "triangularPrism", surfaceArea: "72", volume: "30" },
+  { kind: "squarePyramid", surfaceArea: "96", volume: "48" },
   { kind: "cylinder", surfaceArea: "20π", volume: "12π" },
   { kind: "cone", surfaceArea: "24π", volume: "12π" },
   { kind: "sphere", surfaceArea: "36π", volume: "36π" },
@@ -94,6 +95,13 @@ test("reports derived measurements as calculated, not editable", async ({
   await page.getByTestId("shape-triangularPrism").click();
   await expect(page.getByTestId("derived-c")).toContainText("c = √(3² + 4²)");
   await expect(page.getByTestId("input-c")).toHaveCount(0);
+
+  await page.getByTestId("shape-squarePyramid").click();
+  await expect(page.getByTestId("derived-s")).toContainText(
+    "s = √(4² + (6/2)²)",
+  );
+  await expect(page.getByTestId("derived-s")).toContainText("5");
+  await expect(page.getByTestId("input-s")).toHaveCount(0);
 });
 
 test("recalculates when a dimension changes", async ({ page }) => {
@@ -142,8 +150,126 @@ test("switches between the solid and its net, and explains the sphere", async ({
 
   await page.getByTestId("shape-sphere").click();
   await expect(page.getByTestId("view-net")).toBeDisabled();
-  await expect(page.getByTestId("no-net-reason")).toContainText("no flat net");
   await expect(page.getByTestId("solid-view")).toBeVisible();
+
+  // The reason the Net tab is greyed out is always in the document, for anyone
+  // reading it through the tab, but it is only laid out on screen for someone
+  // pointing at the tab and asking.
+  const reason = page.getByTestId("no-net-reason");
+  await expect(reason).toContainText("no flat net");
+  expect((await reason.boundingBox())?.width).toBeLessThan(10);
+  await page.getByTestId("view-net").hover({ force: true });
+  await expect
+    .poll(async () => (await reason.boundingBox())?.width)
+    .toBeGreaterThan(100);
+});
+
+/** Where an element sits on the page, which is comparable across the views. */
+function placeOf(locator: Locator) {
+  return locator.first().evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return [box.x, box.y, box.width, box.height];
+  });
+}
+
+/**
+ * Watch the fold for the two frames at its very ends, from inside the page.
+ * Reading them afterwards would always be a frame or two late, and it is
+ * precisely the first and last frames that have to line up with the views
+ * either side of them.
+ */
+async function watchFoldEnds(page: Page, surfaceId: string) {
+  await page.evaluate((id) => {
+    const ends: Record<string, number[]> = {};
+    (window as unknown as { __foldEnds: typeof ends }).__foldEnds = ends;
+    const tick = () => {
+      const fold = document.querySelector("[data-testid=fold-view]");
+      const shut = fold?.getAttribute("data-closedness");
+      const piece = fold?.querySelector(`polygon[data-surface="${id}"]`);
+      if (piece && (shut === "1.000" || shut === "0.000")) {
+        const box = piece.getBoundingClientRect();
+        ends[shut] = [box.x, box.y, box.width, box.height];
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, surfaceId);
+
+  return async () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __foldEnds: Record<string, number[]> })
+          .__foldEnds,
+    );
+}
+
+function agreeWithin(a: number[], b: number[], slack: number) {
+  a.forEach((value, index) => expect(value).toBeCloseTo(b[index], slack));
+}
+
+test("folds the solid out into its net and back, from the pose it was left in", async ({
+  page,
+}) => {
+  await page.getByTestId("shape-cube").click();
+
+  // Turn the cube well away from its home view, so a fold that ignored the
+  // current pose would be obvious.
+  await page.getByTestId("solid-view").focus();
+  for (let press = 0; press < 4; press += 1)
+    await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowUp");
+
+  const ends = await watchFoldEnds(page, "cube:front");
+  const standing = await placeOf(face(page, "cube:front"));
+
+  await page.getByTestId("view-net").click();
+  await expect(page.getByTestId("fold-view")).toBeAttached();
+  await expect(page.getByTestId("net-view")).toBeVisible();
+  await expect(page.getByTestId("fold-view")).toHaveCount(0);
+  const flat = await placeOf(
+    page
+      .getByTestId("net-view")
+      .locator('g[data-target="surface:cube:front"] polygon'),
+  );
+
+  // Folding back up leaves the solid exactly as it was found.
+  await page.getByTestId("view-solid").click();
+  await expect(page.getByTestId("solid-view")).toBeVisible();
+  await expect(page.getByTestId("fold-view")).toHaveCount(0);
+  agreeWithin(await placeOf(face(page, "cube:front")), standing, 1);
+
+  // The fold starts on the solid and finishes on the net, to the pixel, so
+  // neither handover moves anything on screen.
+  const frames = await ends();
+  agreeWithin(frames["1.000"], standing, 1);
+  agreeWithin(frames["0.000"], flat, 1);
+});
+
+test("goes straight to the net when motion is not wanted", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ reducedMotion: "reduce" });
+  const page = await context.newPage();
+  await page.goto("/");
+  await expect(page.locator("[data-ready=true]")).toBeAttached();
+
+  await page.getByTestId("view-net").click();
+  await expect(page.getByTestId("net-view")).toBeVisible();
+  await expect(page.getByTestId("fold-view")).toHaveCount(0);
+  await context.close();
+});
+
+test("switches straight over for a shape whose net does not fold up", async ({
+  page,
+}) => {
+  // The logo tile is laid out as loose parts on a workbench rather than as one
+  // joined sheet, so there is no fold to show and it simply changes view.
+  await page.getByTestId("brand-toggle").click();
+  await expect(page.getByTestId("input-m")).toHaveValue("4");
+
+  await page.getByTestId("view-net").click();
+  await expect(page.getByTestId("net-view")).toBeVisible();
+  await expect(page.getByTestId("fold-view")).toHaveCount(0);
 });
 
 test("stops auto-rotation when a net is shown", async ({ page }) => {
@@ -430,4 +556,91 @@ test("keeps rounded decimals short, with the detail a hover away", async ({
   await expect(approx).toHaveText("≈ 62.8", { useInnerText: true });
   await approx.hover();
   await expect(approx).toHaveText("≈ 62.83185", { useInnerText: true });
+});
+
+test("folds the footer into a chip that stays clear of the controls", async ({
+  page,
+}) => {
+  const toggle = page.getByTestId("brand-toggle");
+  const panel = page.getByTestId("brand-panel");
+
+  // Folded up, it is a logo and nothing else. The links stay in the document
+  // for the keyboard, so what says they are folded is the screen-reader-only
+  // box they sit in, not their absence.
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  expect((await panel.boundingBox())!.width).toBeLessThan(10);
+
+  // Pointing at it is enough; a click is only there for touch.
+  await toggle.hover();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(panel).toContainText("Built by teacher.dev");
+  expect((await panel.boundingBox())!.width).toBeGreaterThan(100);
+});
+
+test("keeps the brand chip out of the way on a narrow screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+
+  const chip = await page.getByTestId("brand-toggle").boundingBox();
+  const first = await page.getByTestId("shape-rectangularPrism").boundingBox();
+  const lastOnRow = await page
+    .getByTestId("shape-triangularPrism")
+    .boundingBox();
+  const view = await page.getByTestId("view-solid").boundingBox();
+
+  // The top edge is the tightest row on a phone. The mark leads the row, and
+  // what follows it still has to clear the view controls opposite.
+  expect(chip!.x + chip!.width).toBeLessThanOrEqual(first!.x);
+  expect(lastOnRow!.x + lastOnRow!.width).toBeLessThan(view!.x);
+});
+
+test("keeps the logo out of the shape picker, and behind the mark", async ({
+  page,
+}) => {
+  // It is not one of the six on offer.
+  await expect(page.getByTestId("shape-logoSlab")).toHaveCount(0);
+
+  await page.getByTestId("brand-toggle").click();
+
+  // The top radius is 1, the bottom radius is 1 + 1.5, and the 2-high
+  // bevel has a 2.5-long outside edge. The analytic totals stay exact.
+  await expect(page.getByTestId("surface-total")).toContainText("128");
+  await expect(page.getByTestId("surface-total")).toContainText("16π");
+  await expect(page.getByTestId("volume-total")).toContainText("88");
+  await expect(page.getByTestId("volume-total")).toContainText("6.5π");
+
+  // It is a solid like any other: it has a net and its own dimensions, while
+  // the slanted edge t is correctly derived rather than entered independently.
+  await expect(page.getByTestId("input-m")).toHaveValue("4");
+  await expect(page.getByTestId("input-r")).toHaveValue("1");
+  await expect(page.getByTestId("input-b")).toHaveValue("1.5");
+  await expect(page.getByTestId("input-h")).toHaveValue("2");
+  await expect(page.getByTestId("derived-t")).toContainText("2.5");
+  await page.getByTestId("view-net").click();
+  await expect(page.getByTestId("net-view")).toBeVisible();
+});
+
+test("reaches the about and privacy pages from the chip", async ({ page }) => {
+  await page.getByTestId("brand-toggle").hover();
+  await page.getByTestId("brand-about").click();
+
+  await expect(page).toHaveURL(/\/about$/);
+  await expect(
+    page.getByRole("heading", { name: "About", level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /support@teacher\.dev/ }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "privacy" }).click();
+  await expect(page).toHaveURL(/\/privacy$/);
+  await expect(
+    page.getByText("does not collect personal information"),
+  ).toBeVisible();
+
+  await page.getByTestId("back-to-lab").click();
+  await expect(page.getByTestId("solid-view")).toBeVisible();
 });

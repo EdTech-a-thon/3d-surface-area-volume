@@ -199,6 +199,60 @@ function prismFrame(d: Dimensions) {
   };
 }
 
+/** Segments per rounded corner of the logo tile. */
+const CORNER_SEGMENTS = 8;
+
+/**
+ * The logo tile's outline at height `y`, as one arc per corner.
+ *
+ * The tile is the square of side m grown outwards by the corner radius c, so
+ * each corner is a quarter-circle of radius c about a corner of that inner
+ * square, and the straight run left between two arcs is m. Arc `k` is followed
+ * by the flat side that runs on to arc `k + 1`.
+ */
+function tileArcs(m: number, c: number, y: number): Vec3[][] {
+  const half = m / 2;
+  const centres: readonly (readonly [number, number])[] = [
+    [half, half],
+    [-half, half],
+    [-half, -half],
+    [half, -half],
+  ];
+  return centres.map(([cx, cz], k) =>
+    Array.from({ length: CORNER_SEGMENTS + 1 }, (_, i) => {
+      const angle = ((k + i / CORNER_SEGMENTS) * Math.PI) / 2;
+      return [cx + c * Math.cos(angle), y, cz + c * Math.sin(angle)] as Vec3;
+    }),
+  );
+}
+
+/**
+ * Outward normal of the flat side that follows arc `k`. It is the normal where
+ * that arc ends: the arc runs tangent into the flat, so they share one there.
+ */
+function tileFlatNormal(k: number): Vec3 {
+  const angle = ((k + 1) * Math.PI) / 2;
+  return [Math.cos(angle), 0, Math.sin(angle)];
+}
+
+/**
+ * The point of a rounded square farthest in horizontal direction `u`.
+ *
+ * A rounded square is the Minkowski sum of a square and a disk. Its support
+ * point is therefore the supporting corner of the square plus `radius × u`.
+ * This is the actual silhouette point; multiplying `u` by the shape's total
+ * reach only lands there on an axis or a diagonal, which is why the old height
+ * line floated off the edge at most rotations.
+ */
+function tileSupport(m: number, radius: number, u: Vec3, y: number): Vec3 {
+  const half = m / 2;
+  return [
+    Math.sign(u[0]) * half + radius * u[0],
+    y,
+    Math.sign(u[2]) * half + radius * u[2],
+  ];
+}
+
 export function buildMesh(kind: SolidKind, d: Dimensions): SolidMesh {
   switch (kind) {
     case "rectangularPrism": {
@@ -244,6 +298,41 @@ export function buildMesh(kind: SolidKind, d: Dimensions): SolidMesh {
         ]),
       ];
       return mesh(facets);
+    }
+    case "squarePyramid": {
+      const { b, h } = d;
+      const halfBase = b / 2;
+      const halfHeight = h / 2;
+      const id = (local: string) => `${kind}:${local}`;
+      const apex: Vec3 = [0, halfHeight, 0];
+      return mesh([
+        facet(id("base"), [
+          [-halfBase, -halfHeight, -halfBase],
+          [halfBase, -halfHeight, -halfBase],
+          [halfBase, -halfHeight, halfBase],
+          [-halfBase, -halfHeight, halfBase],
+        ]),
+        facet(id("front"), [
+          [-halfBase, -halfHeight, halfBase],
+          [halfBase, -halfHeight, halfBase],
+          apex,
+        ]),
+        facet(id("back"), [
+          [-halfBase, -halfHeight, -halfBase],
+          [halfBase, -halfHeight, -halfBase],
+          apex,
+        ]),
+        facet(id("left"), [
+          [-halfBase, -halfHeight, -halfBase],
+          [-halfBase, -halfHeight, halfBase],
+          apex,
+        ]),
+        facet(id("right"), [
+          [halfBase, -halfHeight, -halfBase],
+          [halfBase, -halfHeight, halfBase],
+          apex,
+        ]),
+      ]);
     }
     case "cylinder": {
       const { r, h } = d;
@@ -307,6 +396,43 @@ export function buildMesh(kind: SolidKind, d: Dimensions): SolidMesh {
                 at(phi1, theta1),
                 at(phi1, theta0),
               ],
+              true,
+            ),
+          );
+        }
+      }
+      return mesh(facets);
+    }
+    case "logoSlab": {
+      const { m, r, b, h } = d;
+      const half = h / 2;
+      const id = (local: string) => `${kind}:${local}`;
+      const top = tileArcs(m, r, half);
+      const bottom = tileArcs(m, r + b, -half);
+      const last = CORNER_SEGMENTS;
+
+      const facets: Facet[] = [
+        facet(id("top"), top.flat()),
+        facet(id("bottom"), bottom.flat()),
+      ];
+      for (let k = 0; k < top.length; k += 1) {
+        const next = (k + 1) % top.length;
+        // The flat run between this corner and the next.
+        facets.push(
+          facet(id(`flat${k + 1}`), [
+            bottom[k][last],
+            bottom[next][0],
+            top[next][0],
+            top[k][last],
+          ]),
+        );
+        // The corner is a quarter of a cylinder, tessellated like one: drawing
+        // its seams would make a rounded corner look faceted.
+        for (let i = 0; i < last; i += 1) {
+          facets.push(
+            facet(
+              id("corners"),
+              [bottom[k][i], bottom[k][i + 1], top[k][i + 1], top[k][i]],
               true,
             ),
           );
@@ -459,6 +585,53 @@ export function buildEdges(
       push("p", corner(0, b, -hz), corner(0, b, hz), [legB, hypotenuse]);
       return edges;
     }
+    case "squarePyramid": {
+      const { b, h } = d;
+      const halfBase = b / 2;
+      const halfHeight = h / 2;
+      const apex: Vec3 = [0, halfHeight, 0];
+      const corners: Vec3[] = [
+        [-halfBase, -halfHeight, -halfBase],
+        [halfBase, -halfHeight, -halfBase],
+        [halfBase, -halfHeight, halfBase],
+        [-halfBase, -halfHeight, halfBase],
+      ];
+      const sideNormals: Vec3[] = [
+        [0, halfBase, -h],
+        [h, halfBase, 0],
+        [0, halfBase, h],
+        [-h, halfBase, 0],
+      ];
+      const edges: MeasuredEdge[] = corners.map((point, index) => ({
+        id: `${kind}:edge:${index}`,
+        measure: "b",
+        a: point,
+        b: corners[(index + 1) % corners.length],
+        style: "edge",
+        normals: [[0, -1, 0], sideNormals[index]],
+        dashed: false,
+      }));
+      // These textbook construction lines distinguish perpendicular height
+      // from the slant height used by the triangular faces. Put the slant on
+      // whichever base edge faces the viewer so it never shows through a face.
+      const midpoints: Vec3[] = [
+        [0, -halfHeight, -halfBase],
+        [halfBase, -halfHeight, 0],
+        [0, -halfHeight, halfBase],
+        [-halfBase, -halfHeight, 0],
+      ];
+      const slantFoot = midpoints.reduce((front, candidate) =>
+        rotatePoint(candidate, yaw, pitch)[2] >
+        rotatePoint(front, yaw, pitch)[2]
+          ? candidate
+          : front,
+      );
+      edges.push(
+        line("h", [0, -halfHeight, 0], apex, true),
+        line("s", slantFoot, apex, false),
+      );
+      return edges;
+    }
     case "cylinder": {
       const half = d.h / 2;
       // The radius is drawn on whichever disk the viewer can see.
@@ -480,6 +653,75 @@ export function buildEdges(
     }
     case "sphere":
       return [line("r", [0, 0, 0], rim(d.r, 0), true)];
+    case "logoSlab": {
+      const { m, r, b, h } = d;
+      const half = h / 2;
+      const top = tileArcs(m, r, half);
+      const bottom = tileArcs(m, r + b, -half);
+      const last = CORNER_SEGMENTS;
+      const up: Vec3 = [0, 1, 0];
+      const down: Vec3 = [0, -1, 0];
+      const edges: MeasuredEdge[] = [];
+
+      for (let k = 0; k < top.length; k += 1) {
+        const next = (k + 1) % top.length;
+        const flank = tileFlatNormal(k);
+        // The top and bottom runs are both exactly m. The bottom is farther out,
+        // but a parallel offset changes the corner radius, not the straight run.
+        for (const [rimPoints, outward] of [
+          [top, up],
+          [bottom, down],
+        ] as const) {
+          edges.push({
+            id: `${kind}:edge:${edges.length}`,
+            measure: "m",
+            a: rimPoints[k][last],
+            b: rimPoints[next][0],
+            style: "edge",
+            normals: [outward, flank],
+            dashed: false,
+          });
+        }
+      }
+
+      // The bevel edge is the actual silhouette generator: its bottom endpoint
+      // is the support point of the larger outline and its top endpoint is the
+      // matching point of the smaller one. This fixes the old line, which used
+      // a radial reach and only coincided with the edge at special angles.
+      edges.push(
+        line(
+          "t",
+          tileSupport(m, r + b, right, -half),
+          tileSupport(m, r, right, half),
+          false,
+        ),
+      );
+
+      // Height is perpendicular, so it belongs through the key rather than on
+      // its slanted outside edge. Dashed is the standard textbook convention
+      // for a measurement that passes through a solid.
+      edges.push(line("h", [0, -half, 0], [0, half, 0], true));
+
+      // Bevel is the horizontal difference between corresponding outlines.
+      // Put it on the bottom plane in the same silhouette direction.
+      edges.push(
+        line(
+          "b",
+          tileSupport(m, r, right, -half),
+          tileSupport(m, r + b, right, -half),
+          true,
+        ),
+      );
+
+      // `r` really is the bezel radius (not a circumference): this line is one
+      // radius long, from the unrounded square to the top outline. Keeping it in
+      // the current silhouette direction also makes it visually as short and
+      // unobtrusive as the measurement itself.
+      const inner = tileSupport(m, 0, right, half);
+      const outer = tileSupport(m, r, right, half);
+      edges.push(line("r", inner, outer, false));
+      return edges;
+    }
   }
 }
 

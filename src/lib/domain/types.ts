@@ -4,18 +4,29 @@ export type SolidKind =
   | "rectangularPrism"
   | "cube"
   | "triangularPrism"
+  | "squarePyramid"
   | "cylinder"
   | "cone"
-  | "sphere";
+  | "sphere"
+  | "logoSlab";
 
+/** The solids the shape picker offers, in the order it shows them. */
 export const SOLID_ORDER: readonly SolidKind[] = [
   "rectangularPrism",
   "cube",
   "triangularPrism",
+  "squarePyramid",
   "cylinder",
   "cone",
   "sphere",
 ];
+
+/**
+ * Every solid the lab can build. The logo is not in the picker — it is reached
+ * by clicking the mark beside it — but it is a solid like any other and has to
+ * hold up to the same checks.
+ */
+export const SOLID_KINDS: readonly SolidKind[] = [...SOLID_ORDER, "logoSlab"];
 
 /** Independent dimensions, keyed by their mathematical symbol. */
 export type Dimensions = Readonly<Record<string, number>>;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MathText from "$lib/components/MathText.svelte";
   import { evalExact, formatExact } from "$lib/domain/exact";
   import {
     UNITS,
@@ -13,6 +14,7 @@
     type MeasuredEdge,
     type Vec3,
   } from "$lib/domain/geometry3d";
+  import { DIMENSION_MAX } from "$lib/domain/types";
   import {
     measureTarget,
     surfaceTarget,
@@ -20,6 +22,15 @@
     type Target,
   } from "$lib/state/lab.svelte";
   import { HATCH_PATTERN_ID, chipTint, facetFill } from "$lib/ui/colors";
+  import {
+    LOGO_MARK_INK,
+    LOGO_MARK_LOOP,
+    LOGO_MARK_STROKE,
+    LOGO_MARK_TICK,
+    logoMarkTransform,
+  } from "$lib/ui/logoMark";
+  import { floorPlane, floorRules } from "$lib/ui/floor";
+  import { fitFraction, gridLayers, gridScale } from "$lib/ui/grid";
 
   let {
     lab,
@@ -35,8 +46,58 @@
   let boxHeight = $state(650);
   const halfWidth = $derived(Math.max(boxWidth, 1) / 2);
   const halfHeight = $derived(Math.max(boxHeight, 1) / 2);
+  /** The extent of the largest solid the sliders reach: a sphere of radius 20. */
+  const FULL_EXTENT = DIMENSION_MAX;
   const scale = $derived(
-    (Math.min(halfWidth, halfHeight) * 0.78) / lab.mesh.extent,
+    (Math.min(halfWidth, halfHeight) *
+      0.78 *
+      fitFraction(lab.mesh.extent, FULL_EXTENT)) /
+      lab.mesh.extent,
+  );
+
+  /**
+   * The drawing is always fitted to the screen, so growing a cube would change
+   * nothing on its own. The floor under it is what shows the size: its ruling
+   * is a fixed number of units apart, so the solid straddles more squares as it
+   * grows. See floor.ts.
+   */
+  const grid = $derived(gridScale(scale));
+  /** How dark the ruling sits against the backdrop. */
+  const FLOOR_INK = 0.55;
+  const gridInk = $derived(gridLayers(FLOOR_INK, grid.fade));
+  const FLOOR_MASK_ID = "floor-reach";
+  const FLOOR_FADE_ID = "floor-fade";
+
+  /**
+   * The foot of the solid. Every mesh is built around its own centre, so this
+   * is below the origin, and it is where the floor goes: the solid should stand
+   * on the plane rather than hover over it or sink into it.
+   */
+  const baseY = $derived.by(() => {
+    let lowest = 0;
+    for (const facet of lab.mesh.facets) {
+      for (const [, y] of facet.points) if (y < lowest) lowest = y;
+    }
+    return lowest;
+  });
+
+  /**
+   * How far the floor reaches, as a multiple of the solid's own size. A fitted
+   * solid is always about the same size on screen, so this keeps the floor about
+   * the same size on screen too — a patch of ground the solid stands on, not a
+   * ruled backdrop. What changes with the shape is how many squares fit on it.
+   */
+  const FLOOR_REACH = 2.4;
+  const floorRadius = $derived(lab.mesh.extent * FLOOR_REACH);
+  const floor = $derived(floorPlane(lab.yaw, lab.pitch, scale, baseY));
+  // Finer ruling first, so the coarse one fades out over it rather than over
+  // the bare floor: see gridLayers. A layer with no ink left in it is dropped
+  // rather than drawn invisibly, which is a hundred-odd lines saved.
+  const floorLayers = $derived(
+    [
+      { key: "fine", step: grid.fineStep, ink: gridInk.fine },
+      { key: "coarse", step: grid.step, ink: gridInk.coarse },
+    ].filter((layer) => layer.ink > 0.004),
   );
 
   const linear = $derived(UNITS[lab.unit].linear);
@@ -76,7 +137,7 @@
       // Null hue means "not selected": each selected surface keeps its own.
       const hue = lab.hueFor(facet.surfaceId);
 
-      const fill = facetFill(hue, diffuse);
+      const fill = facetFill(hue, diffuse, lab.definition.baseHue ?? null);
       drawn.push({
         surfaceId: facet.surfaceId,
         points: projected
@@ -92,6 +153,27 @@
       });
     }
     return drawn.sort((a, b) => a.depth - b.depth);
+  });
+
+  /**
+   * The logo's doodle, placed on the tile's top face. Null whenever there is
+   * nothing to place it on: another solid, or this one turned face-away.
+   */
+  const logoMark = $derived.by(() => {
+    if (lab.kind !== "logoSlab") return null;
+    const up = rotatePoint([0, 1, 0], lab.yaw, lab.pitch);
+    if (up[2] <= 1e-6) return null;
+
+    const { m, r, h } = lab.dimensions;
+    // The artwork belongs to the smaller top face. Its own diagonal basis maps
+    // to that rounded square, not to the wider footprint below it.
+    const reach = (m + 2 * r) / 2;
+    const at = (x: number, z: number) =>
+      projectPoint(rotatePoint([x, h / 2, z], lab.yaw, lab.pitch), scale);
+    // The artwork's first half-diagonal runs to the tile corner that the home
+    // view puts on the right, and its second to the one nearest the viewer, so
+    // the doodle lands the way round it does on the mark itself.
+    return logoMarkTransform(at(0, 0), at(reach, -reach), at(reach, reach));
   });
 
   // Which drawn edge the pointer is on. The lab only knows which *length* is
@@ -160,18 +242,15 @@
       .map((surface) => {
         const running = totals[surface.id];
         const target = surfaceTarget(surface.id);
-        const value = formatExact(surface.exact);
-        const rounded = formatApproximate(evalExact(surface.exact)).rounded;
         return {
           surface,
           target,
           tint: chipTint(lab.huesBySurfaceId[surface.id] ?? 0),
           active: lab.isActive(target),
           pinned: lab.isPinned(target),
-          value,
-          approximate: rounded
-            ? approximateText(evalExact(surface.exact))
-            : null,
+          // A face shows its exact area only: the rounded reading belongs to
+          // the totals card, where there is room to explain it.
+          value: formatExact(surface.exact),
           x: halfWidth + running.x / running.area,
           y: halfHeight + running.y / running.area,
         };
@@ -410,6 +489,27 @@
     onkeydown={onKeyDown}
   >
     <defs>
+      <!-- The floor has no edge to it: it is ruled well past what is drawn and
+           then faded out in a circle around the solid, so the ruling thins into
+           the background instead of stopping at a rectangle. The fade is a
+           circle *on the floor*, laid into the scene by the same matrix as the
+           ruling, so it comes out as the ellipse the eye expects. -->
+      <radialGradient id={FLOOR_FADE_ID}>
+        <stop offset="0.45" stop-color="#fff" />
+        <stop offset="1" stop-color="#000" />
+      </radialGradient>
+      <mask
+        id={FLOOR_MASK_ID}
+        maskUnits="userSpaceOnUse"
+        x={-halfWidth}
+        y={-halfHeight}
+        width={halfWidth * 2}
+        height={halfHeight * 2}
+      >
+        <g transform={floor.matrix}>
+          <circle cx="0" cy="0" r={floorRadius} fill="url(#{FLOOR_FADE_ID})" />
+        </g>
+      </mask>
       <pattern
         id={HATCH_PATTERN_ID}
         width="14"
@@ -428,6 +528,48 @@
         />
       </pattern>
     </defs>
+
+    {#snippet ground()}
+      <g
+        mask="url(#{FLOOR_MASK_ID})"
+        opacity={floor.openness}
+        pointer-events="none"
+      >
+        <g transform={floor.matrix}>
+          <circle cx="0" cy="0" r={floorRadius} fill="#46606f" opacity="0.05" />
+          <!-- The lines are laid out in the floor's own units, so
+               non-scaling-stroke is what keeps them a hairline on screen
+               instead of a unit thick in the scene. -->
+          {#each floorLayers as layer (layer.key)}
+            <g stroke="#46606f" stroke-opacity={layer.ink}>
+              {#each floorRules(layer.step, floorRadius) as rule (rule)}
+                <line
+                  x1={rule}
+                  y1={-floorRadius}
+                  x2={rule}
+                  y2={floorRadius}
+                  stroke-width="1"
+                  vector-effect="non-scaling-stroke"
+                />
+                <line
+                  x1={-floorRadius}
+                  y1={rule}
+                  x2={floorRadius}
+                  y2={rule}
+                  stroke-width="1"
+                  vector-effect="non-scaling-stroke"
+                />
+              {/each}
+            </g>
+          {/each}
+        </g>
+      </g>
+    {/snippet}
+
+    <!-- Seen from above the solid stands on the floor and hides the part it
+         covers; seen from below the floor is between the viewer and the solid,
+         so it goes on top instead. -->
+    {#if !floor.fromBelow}{@render ground()}{/if}
 
     {#each facets as facet, index (index)}
       <polygon
@@ -450,6 +592,20 @@
         />
       {/if}
     {/each}
+
+    <!-- The mark itself, on the face it belongs to. Drawn after the facets, so
+         it sits on the top face rather than under it. -->
+    {#if logoMark}
+      <g transform={logoMark} pointer-events="none" stroke-linejoin="round">
+        <path
+          d={LOGO_MARK_LOOP}
+          fill="none"
+          stroke={LOGO_MARK_INK}
+          stroke-width={LOGO_MARK_STROKE}
+        />
+        <path d={LOGO_MARK_TICK} fill={LOGO_MARK_INK} />
+      </g>
+    {/if}
 
     {#each edges as drawn (drawn.edge.id)}
       {#if drawn.active || drawn.edge.style === "measure"}
@@ -479,6 +635,8 @@
         data-edge={drawn.edge.id}
       />
     {/each}
+
+    {#if floor.fromBelow}{@render ground()}{/if}
   </svg>
 
   <!-- Measurements live above the drawing as real buttons, so they can be read,
@@ -512,19 +670,17 @@
       >
         {#if badge.active}
           <span class="block font-sans font-bold"
-            >{badge.surface.code} · {badge.surface.name}{lab.showFormulas
-              ? ` · ${badge.surface.formula}`
-              : ""}</span
+            >{badge.surface.code} · {badge.surface.name}{#if lab.showFormulas}
+              · <MathText text={badge.surface.formula} />
+            {/if}</span
           >
           <span class="block" data-testid="face-value-{badge.surface.localId}">
             <!-- The working only appears while the fx toggle is on, exactly as
                  it does for the totals. -->
-            {lab.showFormulas ? `${badge.surface.substitution} =` : "="}
+            {#if lab.showFormulas}<MathText text={badge.surface.substitution} /> ={:else}={/if}
             {#if lab.answersVisible}
-              <strong>{badge.value}</strong>
-              {areaUnit}{#if badge.approximate}
-                <span class="text-ink-soft"> {badge.approximate}</span>
-              {/if}
+              <strong><MathText text={badge.value} /></strong>
+              {areaUnit}
             {:else}
               <span data-testid="face-value-{badge.surface.localId}-hidden"
                 >?</span
@@ -552,9 +708,11 @@
         onclick={() => lab.togglePin(label.target)}
       >
         {#if label.working}
-          <span class="block text-ink-soft">{label.working}</span>
+          <span class="block text-ink-soft"
+            ><MathText text={label.working} /></span
+          >
         {/if}
-        <span class="block font-bold">{label.text}</span>
+        <span class="block font-bold"><MathText text={label.text} /></span>
         {#if label.approximate}
           <span class="block text-ink-soft">{label.approximate}</span>
         {/if}

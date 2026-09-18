@@ -44,3 +44,37 @@ a {
   stroke: #ffffff;
   stroke-linejoin: round;
 }
+
+/* A square root drawn as a shape rather than typed as a glyph; the reasoning
+   and the outline live in `$lib/ui/radical`, and the sign's own strokes are set
+   on the elements there. All this rule does is give the sign a box to fill and
+   keep the radicand clear of it. */
+.radical {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.radical > .radical-mark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Clears the tick on the left and the rule above; the right pad lets the rule
+   overhang the last character. The tight line height is what sets the sign's
+   height, so a roomy line height in a surrounding panel cannot stretch the tick
+   into a long spike. */
+.radical > .radical-body {
+  display: inline-block;
+  padding: 0.2em 0.14em 0 0.76em;
+  line-height: 1.25;
+}
+
+/* The photo caption on the About page, in the spirit of a note written on the
+   print itself. System script faces only: nothing is fetched for it. */
+.handwriting {
+  font-family:
+    "Segoe Script", "Bradley Hand", "Snell Roundhand", "Comic Sans MS", cursive;
+}

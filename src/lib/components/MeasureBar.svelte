@@ -1,5 +1,6 @@
 <script lang="ts">
   import Approximation from "$lib/components/Approximation.svelte";
+  import MathText from "$lib/components/MathText.svelte";
   import { evalExact, formatExact } from "$lib/domain/exact";
   import { UNITS } from "$lib/domain/format";
   import {
@@ -121,9 +122,11 @@
       data-testid="derived-{derived.key}"
     >
       <!-- "l = w = h = 2" already ends in its own value; "s = √(3² + 4²)" does not. -->
-      {derived.substitution.endsWith(`= ${exact}`)
-        ? derived.substitution
-        : `${derived.substitution} = ${exact}`}
+      <MathText
+        text={derived.substitution.endsWith(`= ${exact}`)
+          ? derived.substitution
+          : `${derived.substitution} = ${exact}`}
+      />
       <Approximation {value} class="text-xs" />
     </p>
   {/each}

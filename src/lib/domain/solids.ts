@@ -1,5 +1,5 @@
 /**
- * The six solids: their independent dimensions, derived measurements, surface
+ * The solids: their independent dimensions, derived measurements, surface
  * decomposition, and exact surface-area and volume expressions.
  *
  * Everything here is pure. Rendering, highlighting and answer visibility never
@@ -45,6 +45,12 @@ export interface SolidDefinition {
   readonly defaults: Dimensions;
   /** False for the sphere, which has no distortion-free flat net. */
   readonly hasNet: boolean;
+  /**
+   * A hue this solid is drawn in when nothing is selected, for a solid that is
+   * a picture of something and has a colour of its own. Unset means the usual
+   * slate blue.
+   */
+  readonly baseHue?: number;
   build(dimensions: Dimensions): SolidModel;
 }
 
@@ -275,6 +281,65 @@ function triangularPrism(dimensions: Dimensions): SolidModel {
   };
 }
 
+function squarePyramid(dimensions: Dimensions): SolidModel {
+  const kind: SolidKind = "squarePyramid";
+  const [baseSide, h] = [r(dimensions, "b"), r(dimensions, "h")];
+  const [bs, hs] = [dec(dimensions.b), dec(dimensions.h)];
+  const halfBase = mul(baseSide, HALF);
+  // The slant height runs from the apex to the midpoint of a base edge. It is
+  // the altitude of each triangular side, not the sloping corner edge.
+  const slant = exactSqrt(add(pow(halfBase, 2), pow(h, 2)));
+  const slantText = formatExact(slant);
+  const base = exactRational(pow(baseSide, 2));
+  const side = scaleExact(slant, mul(baseSide, HALF));
+
+  const surfaces: SurfaceTerm[] = [
+    makeSurface(kind, "base", "Square base", "B", "b²", `${bs}²`, base),
+    ...[
+      ["front", "Front triangular face", "F"],
+      ["back", "Back triangular face", "Bk"],
+      ["left", "Left triangular face", "L"],
+      ["right", "Right triangular face", "R"],
+    ].map(([localId, name, code]) =>
+      makeSurface(
+        kind,
+        localId,
+        name,
+        code,
+        "bs / 2",
+        `(${bs} × ${slantText}) / 2`,
+        side,
+      ),
+    ),
+  ];
+
+  return {
+    kind,
+    name: "Square pyramid",
+    dimensions,
+    derived: [
+      {
+        key: "s",
+        label: "Slant height s",
+        formula: "s = √(h² + (b/2)²)",
+        substitution: `s = √(${hs}² + (${bs}/2)²)`,
+        exact: slant,
+      },
+    ],
+    surfaces,
+    surfaceArea: {
+      formula: "SA = b² + 2bs",
+      substitution: `SA = ${bs}² + 2 × ${bs} × ${slantText}`,
+      exact: totalOf(surfaces),
+    },
+    volume: {
+      formula: "V = b²h / 3",
+      substitution: `V = (${bs}² × ${hs}) / 3`,
+      exact: exactRational(mul(mul(pow(baseSide, 2), h), THIRD)),
+    },
+  };
+}
+
 function cylinder(dimensions: Dimensions): SolidModel {
   const kind: SolidKind = "cylinder";
   const [radius, h] = [r(dimensions, "r"), r(dimensions, "h")];
@@ -420,6 +485,128 @@ function sphere(dimensions: Dimensions): SolidModel {
   };
 }
 
+/**
+ * The site's logo, taken at its word — and shaped like a keyboard key.
+ *
+ * The top is a rounded square with straight run m and bezel radius r. The
+ * bottom is the parallel rounded square with radius r + b, where b is the
+ * outward bevel. Joining matching points makes four slanted rectangles and,
+ * across the four corners together, one conical frustum.
+ *
+ * The side's true edge is t = √(h² + b²). That is the line drawn on the outside
+ * of the key; h remains the perpendicular height used by the volume.
+ */
+function logoSlab(dimensions: Dimensions): SolidModel {
+  const kind: SolidKind = "logoSlab";
+  const [m, radius, bevel, height] = [
+    r(dimensions, "m"),
+    r(dimensions, "r"),
+    r(dimensions, "b"),
+    r(dimensions, "h"),
+  ];
+  const [ms, rs, bs, hs] = [
+    dec(dimensions.m),
+    dec(dimensions.r),
+    dec(dimensions.b),
+    dec(dimensions.h),
+  ];
+  const bottomRadius = add(radius, bevel);
+  const bottomRadiusText = `${rs} + ${bs}`;
+  const slant = exactSqrt(add(pow(height, 2), pow(bevel, 2)));
+  const slantText = formatExact(slant);
+
+  /** A rounded square is a square, four strips, and four quarter-circles. */
+  const face = (corner: Rational): Exact =>
+    addExact(
+      exactRational(add(pow(m, 2), mul(FOUR, mul(m, corner)))),
+      exactPi(pow(corner, 2)),
+    );
+  const top = face(radius);
+  const bottom = face(bottomRadius);
+  const topFormula = "m² + 4mr + πr²";
+  const topSubstitution = `${ms}² + 4 × ${ms} × ${rs} + π × ${rs}²`;
+  const bottomFormula = "m² + 4m(r + b) + π(r + b)²";
+  const bottomSubstitution = `${ms}² + 4 × ${ms} × (${bottomRadiusText}) + π × (${bottomRadiusText})²`;
+
+  const surfaces: SurfaceTerm[] = [
+    makeSurface(kind, "top", "Top face", "T", topFormula, topSubstitution, top),
+    makeSurface(
+      kind,
+      "bottom",
+      "Bottom face",
+      "Bt",
+      bottomFormula,
+      bottomSubstitution,
+      bottom,
+    ),
+    // The four straight sides are separate, so each badge lands on its own
+    // face. Each is an m-by-t rectangle tilted out by the bevel.
+    ...[1, 2, 3, 4].map((n) =>
+      makeSurface(
+        kind,
+        `flat${n}`,
+        `Bevel side ${n}`,
+        `S${n}`,
+        "m × t",
+        `${ms} × ${slantText}`,
+        scaleExact(slant, m),
+      ),
+    ),
+    // Four quarter-frusta make one complete conical frustum with top radius r,
+    // bottom radius r + b, and slant t.
+    makeSurface(
+      kind,
+      "corners",
+      "Four rounded bevel corners",
+      "Bz",
+      "π(2r + b)t",
+      `π × (2 × ${rs} + ${bs}) × ${slantText}`,
+      mulExact(exactPi(add(mul(TWO, radius), bevel)), slant),
+    ),
+  ];
+
+  // At each level the corner radius changes linearly from r + b to r. For
+  // A(q) = m² + 4mq + πq², integrating q and q² over the height gives these
+  // average coefficients exactly — no mesh approximation enters the volume.
+  const averagePlain = add(
+    add(pow(m, 2), mul(FOUR, mul(m, radius))),
+    mul(TWO, mul(m, bevel)),
+  );
+  const averagePi = add(
+    add(pow(radius, 2), mul(radius, bevel)),
+    mul(pow(bevel, 2), THIRD),
+  );
+
+  return {
+    kind,
+    name: "teacher.dev key",
+    dimensions,
+    derived: [
+      {
+        key: "t",
+        label: "Bevel edge t",
+        formula: "t = √(h² + b²)",
+        substitution: `t = √(${hs}² + ${bs}²)`,
+        exact: slant,
+      },
+    ],
+    surfaces,
+    surfaceArea: {
+      formula: "SA = A(top) + A(bottom) + 4mt + π(2r + b)t",
+      substitution: `SA = (${topSubstitution}) + (${bottomSubstitution}) + 4 × ${ms} × ${slantText} + π × (2 × ${rs} + ${bs}) × ${slantText}`,
+      exact: totalOf(surfaces),
+    },
+    volume: {
+      formula: "V = h[m² + 4m(r + b/2) + π(r² + rb + b²/3)]",
+      substitution: `V = ${hs}[${ms}² + 4 × ${ms} × (${rs} + ${bs}/2) + π(${rs}² + ${rs} × ${bs} + ${bs}²/3)]`,
+      exact: addExact(
+        exactRational(mul(height, averagePlain)),
+        exactPi(mul(height, averagePi)),
+      ),
+    },
+  };
+}
+
 /** Total surface area is always the sum of the listed surfaces, counted once each. */
 function totalOf(surfaces: readonly SurfaceTerm[]): Exact {
   return addExact(...surfaces.map((surface) => surface.exact));
@@ -478,6 +665,27 @@ export const SOLIDS: Record<SolidKind, SolidDefinition> = {
     hasNet: true,
     build: triangularPrism,
   },
+  squarePyramid: {
+    kind: "squarePyramid",
+    name: "Square pyramid",
+    shortName: "Square pyramid",
+    summary: "A square base joined to an apex by four triangular faces.",
+    dimensions: [
+      {
+        key: "b",
+        label: "Base side",
+        hint: "Length of each side of the square base",
+      },
+      {
+        key: "h",
+        label: "Height",
+        hint: "Perpendicular height from the base to the apex",
+      },
+    ],
+    defaults: { b: 6, h: 4 },
+    hasNet: true,
+    build: squarePyramid,
+  },
   cylinder: {
     kind: "cylinder",
     name: "Cylinder",
@@ -528,6 +736,44 @@ export const SOLIDS: Record<SolidKind, SolidDefinition> = {
     defaults: { r: 3 },
     hasNet: false,
     build: sphere,
+  },
+  logoSlab: {
+    kind: "logoSlab",
+    name: "teacher.dev key",
+    shortName: "Logo key",
+    summary:
+      "The site's own mark as a tapered, rounded keyboard key. Not in the picker.",
+    // The logo's own green, so it arrives looking like the mark that summoned
+    // it rather than like another slate-blue block.
+    baseHue: 79,
+    dimensions: [
+      {
+        key: "m",
+        label: "Straight side",
+        hint: "The flat run along one side, between two rounded corners",
+      },
+      {
+        key: "r",
+        label: "Bezel radius",
+        hint: "Radius of each rounded corner on the top face",
+      },
+      {
+        key: "b",
+        label: "Bevel",
+        hint: "How much farther out the bottom extends on every side",
+      },
+      {
+        key: "h",
+        label: "Height",
+        hint: "Perpendicular distance from the bottom face to the top face",
+      },
+    ],
+    // h = 2 and b = 1.5 make the visible bevel edge t = 2.5 exactly.
+    // These also give pleasantly clean totals: SA = 128 + 16π and
+    // V = 88 + 6.5π.
+    defaults: { m: 4, r: 1, b: 1.5, h: 2 },
+    hasNet: true,
+    build: logoSlab,
   },
 };
 
