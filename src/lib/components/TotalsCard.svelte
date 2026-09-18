@@ -38,6 +38,12 @@
     "text-xs font-normal text-ink-soft" +
       (compact ? " max-[26rem]:text-[10px]" : ""),
   );
+  /**
+   * The rounded reading goes under the exact answer rather than after it in a
+   * floating window. "36π sq units ≈ 113.1" on one line is the widest thing the
+   * lab ever shows, and it is what makes this panel take half a small window.
+   */
+  const approxText = $derived(unitText + (compact ? " block" : ""));
 </script>
 
 <!--
@@ -62,7 +68,7 @@
       <span class={readout} data-testid={testid}>
         <MathText text={formatExact(calculation.exact)} />
         <span class={unitText}>{unitLabel}</span>
-        <Approximation {value} class={unitText} testid="{testid}-approx" />
+        <Approximation {value} class={approxText} testid="{testid}-approx" />
       </span>
     {:else}
       <span data-testid="{testid}-hidden" class="{readout} text-ink-soft/50">
@@ -73,7 +79,10 @@
     {/if}
   </div>
   {#if lab.showFormulas}
-    <p class="mt-0.5 mb-1 ml-8 font-mono text-xs text-ink-soft">
+    <!-- The working wraps rather than running on: the panel is as wide as the
+         window lets it be, and a line that cannot fit has to fold inside the
+         card instead of pushing the buttons out through its edge. -->
+    <p class="mt-0.5 mb-1 ml-8 font-mono text-xs break-words text-ink-soft">
       <span class="block" data-testid="{testid.split('-')[0]}-formula">
         <MathText text={calculation.formula} />
       </span>

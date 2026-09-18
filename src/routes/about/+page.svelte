@@ -79,7 +79,7 @@
       {t("about.feedback")}
     </p>
     <a
-      href="mailto:support@teacher.dev?subject=Shape%20Lab%20feedback"
+      href="mailto:support@teacher.dev?subject=Geometric%20Solids%20feedback"
       class="inline-block rounded-xl bg-accent px-4 py-2 font-bold text-white transition hover:bg-ink"
       >{t("about.email")}</a
     >

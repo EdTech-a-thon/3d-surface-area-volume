@@ -9,19 +9,19 @@ const en = {
   locale: "en",
   ui: {
     "language.change": "Change language",
-    "app.name": "Shape Lab",
-    "app.pageTitle": "Shape Lab — surface area and volume",
+    "app.name": "Geometric Solids",
+    "app.pageTitle": "Geometric Solids — surface area and volume",
     "app.description":
       "An interactive lab for exploring surface area and volume.",
     "lab.answersVisible": "Final answers are visible.",
     "lab.answersHidden": "Final answers are hidden.",
     "lab.units": "Units",
     "lab.floatError": "Could not open the floating window: {error}",
-    "floating.title": "Shape Lab is floating",
+    "floating.title": "Geometric Solids is floating",
     "floating.instructions":
       "Switch to the textbook tab and keep this tab open. Your work stays in the floating window, and its back-to-tab button brings you here again.",
-    "floating.return": "Bring Shape Lab back here",
-    "float.open": "Float Shape Lab over other tabs",
+    "floating.return": "Bring Geometric Solids back here",
+    "float.open": "Float Geometric Solids over other tabs",
     "float.unsupported": "Floating windows are not supported by this browser",
     "float.failed": "The floating window could not be opened.",
     "float.button": "Float",
@@ -66,19 +66,19 @@ const en = {
     "common.builtBy": "Built by teacher.dev",
     "common.about": "about",
     "common.privacy": "privacy",
-    "common.back": "← Back to the lab",
+    "common.back": "← Back to the interactive",
     "solid.description":
       "{name} with {dimensions} {unit}. Drag or use the arrow keys to rotate. Point at a face or an edge to measure it.",
     "net.description": "Flat net of the {name}",
     "grid.key": "Each grid square is {size} {unit} across",
-    "about.pageTitle": "About — Shape Lab",
+    "about.pageTitle": "About — Geometric Solids",
     "about.meta":
-      "Shape Lab is a free, ad-free classroom tool for teaching surface area and volume, built by teacher.dev.",
+      "Geometric Solids is a free, ad-free classroom tool for teaching surface area and volume, built by teacher.dev.",
     "about.title": "About",
     "about.lede":
       "A teacher-led demonstration of how a solid's dimensions relate to its surface area and volume.",
     "about.originTitle": "From the EdTech-a-thon",
-    "about.origin.beforeEvent": "Shape Lab came out of the ",
+    "about.origin.beforeEvent": "Geometric Solids came out of the ",
     "about.origin.afterEvent":
       ", a community of builders making free tools for classrooms. It is maintained by ",
     "about.origin.afterTeacher":
@@ -95,14 +95,14 @@ const en = {
     "about.feedback":
       "We'd love to hear from you. Tell us what's working, what's not, or pitch us an idea for a tool you wish existed. We're here to help.",
     "about.email": "Email support@teacher.dev",
-    "privacy.pageTitle": "Privacy — Shape Lab",
-    "privacy.meta": "What Shape Lab collects, what it doesn't, and why.",
+    "privacy.pageTitle": "Privacy — Geometric Solids",
+    "privacy.meta": "What Geometric Solids collects, what it doesn't, and why.",
     "privacy.title": "Privacy",
     "privacy.lede": "What we collect, what we don't, and why.",
     "privacy.local":
-      "Shape Lab does not collect personal information from teachers or students. There are no accounts, and nothing you type into it — dimensions, units, the solid you pick — is sent anywhere or saved anywhere. It all lives in the page for as long as the tab is open, and it is gone when you close it.",
+      "Geometric Solids does not collect personal information from teachers or students. There are no accounts, and nothing you type into it — dimensions, units, the solid you pick — is sent anywhere or saved anywhere. It all lives in the page for as long as the tab is open, and it is gone when you close it.",
     "privacy.analytics.beforeLink":
-      "We use Cloudflare Web Analytics to anonymously count visits, which helps us understand how Shape Lab is being used in classrooms. Cloudflare Web Analytics is cookieless, does not fingerprint visitors, and does not track users across other sites; see Cloudflare's ",
+      "We use Cloudflare Web Analytics to anonymously count visits, which helps us understand how Geometric Solids is being used in classrooms. Cloudflare Web Analytics is cookieless, does not fingerprint visitors, and does not track users across other sites; see Cloudflare's ",
     "privacy.analytics.link": "privacy policy",
     "privacy.analytics.afterLink":
       " for details. We do not share, sell, or otherwise transfer any visitor data to third parties.",
@@ -163,19 +163,19 @@ const es = {
   locale: "es",
   ui: {
     "language.change": "Cambiar idioma",
-    "app.name": "Shape Lab",
-    "app.pageTitle": "Shape Lab — área superficial y volumen",
+    "app.name": "Geometric Solids",
+    "app.pageTitle": "Geometric Solids — área superficial y volumen",
     "app.description":
       "Un laboratorio interactivo para explorar el área superficial y el volumen.",
     "lab.answersVisible": "Las respuestas finales están visibles.",
     "lab.answersHidden": "Las respuestas finales están ocultas.",
     "lab.units": "Unidades",
     "lab.floatError": "No se pudo abrir la ventana flotante: {error}",
-    "floating.title": "Shape Lab está flotando",
+    "floating.title": "Geometric Solids está flotando",
     "floating.instructions":
       "Cambia a la pestaña del libro de texto y mantén esta pestaña abierta. Tu trabajo permanece en la ventana flotante, y su botón para volver a la pestaña te traerá aquí de nuevo.",
-    "floating.return": "Traer Shape Lab de vuelta aquí",
-    "float.open": "Mostrar Shape Lab sobre otras pestañas",
+    "floating.return": "Traer Geometric Solids de vuelta aquí",
+    "float.open": "Mostrar Geometric Solids sobre otras pestañas",
     "float.unsupported": "Este navegador no admite ventanas flotantes",
     "float.failed": "No se pudo abrir la ventana flotante.",
     "float.button": "Flotar",
@@ -220,19 +220,19 @@ const es = {
     "common.builtBy": "Creado por teacher.dev",
     "common.about": "acerca de",
     "common.privacy": "privacidad",
-    "common.back": "← Volver al laboratorio",
+    "common.back": "← Volver al interactivo",
     "solid.description":
       "{name} con {dimensions} {unit}. Arrastra o usa las flechas para girarlo. Señala una cara o una arista para medirla.",
     "net.description": "Red plana de {name}",
     "grid.key": "Cada cuadrado de la cuadrícula mide {size} {unit}",
-    "about.pageTitle": "Acerca de — Shape Lab",
+    "about.pageTitle": "Acerca de — Geometric Solids",
     "about.meta":
-      "Shape Lab es una herramienta gratuita y sin anuncios para enseñar área superficial y volumen, creada por teacher.dev.",
+      "Geometric Solids es una herramienta gratuita y sin anuncios para enseñar área superficial y volumen, creada por teacher.dev.",
     "about.title": "Acerca de",
     "about.lede":
       "Una demostración guiada por docentes de cómo las dimensiones de un sólido se relacionan con su área superficial y su volumen.",
     "about.originTitle": "Del EdTech-a-thon",
-    "about.origin.beforeEvent": "Shape Lab nació en el ",
+    "about.origin.beforeEvent": "Geometric Solids nació en el ",
     "about.origin.afterEvent":
       ", una comunidad de creadores que desarrolla herramientas gratuitas para las aulas. Lo mantiene ",
     "about.origin.afterTeacher":
@@ -249,14 +249,14 @@ const es = {
     "about.feedback":
       "Nos encantaría saber de ti. Cuéntanos qué funciona, qué no, o propón una herramienta que te gustaría que existiera. Estamos aquí para ayudar.",
     "about.email": "Escribir a support@teacher.dev",
-    "privacy.pageTitle": "Privacidad — Shape Lab",
-    "privacy.meta": "Qué recopila Shape Lab, qué no y por qué.",
+    "privacy.pageTitle": "Privacidad — Geometric Solids",
+    "privacy.meta": "Qué recopila Geometric Solids, qué no y por qué.",
     "privacy.title": "Privacidad",
     "privacy.lede": "Qué recopilamos, qué no y por qué.",
     "privacy.local":
-      "Shape Lab no recopila información personal de docentes ni estudiantes. No hay cuentas, y nada de lo que introduces —dimensiones, unidades o el sólido que eliges— se envía ni se guarda en ningún lugar. Todo permanece en la página mientras la pestaña está abierta y desaparece cuando la cierras.",
+      "Geometric Solids no recopila información personal de docentes ni estudiantes. No hay cuentas, y nada de lo que introduces —dimensiones, unidades o el sólido que eliges— se envía ni se guarda en ningún lugar. Todo permanece en la página mientras la pestaña está abierta y desaparece cuando la cierras.",
     "privacy.analytics.beforeLink":
-      "Usamos Cloudflare Web Analytics para contar visitas de forma anónima, lo que nos ayuda a entender cómo se usa Shape Lab en las aulas. Cloudflare Web Analytics no utiliza cookies, no crea huellas digitales de los visitantes ni los rastrea en otros sitios; consulta la ",
+      "Usamos Cloudflare Web Analytics para contar visitas de forma anónima, lo que nos ayuda a entender cómo se usa Geometric Solids en las aulas. Cloudflare Web Analytics no utiliza cookies, no crea huellas digitales de los visitantes ni los rastrea en otros sitios; consulta la ",
     "privacy.analytics.link": "política de privacidad",
     "privacy.analytics.afterLink":
       " de Cloudflare para obtener más información. No compartimos, vendemos ni transferimos de otro modo datos de visitantes a terceros.",
@@ -392,19 +392,19 @@ const fr = {
   locale: "fr",
   ui: {
     "language.change": "Changer de langue",
-    "app.name": "Shape Lab",
-    "app.pageTitle": "Shape Lab — aire et volume",
+    "app.name": "Geometric Solids",
+    "app.pageTitle": "Geometric Solids — aire et volume",
     "app.description":
       "Un laboratoire interactif pour explorer l’aire et le volume.",
     "lab.answersVisible": "Les réponses finales sont visibles.",
     "lab.answersHidden": "Les réponses finales sont masquées.",
     "lab.units": "Unités",
     "lab.floatError": "Impossible d’ouvrir la fenêtre flottante : {error}",
-    "floating.title": "Shape Lab est dans une fenêtre flottante",
+    "floating.title": "Geometric Solids est dans une fenêtre flottante",
     "floating.instructions":
       "Passez à l’onglet du manuel et gardez cet onglet ouvert. Votre travail reste dans la fenêtre flottante, et son bouton de retour à l’onglet vous ramènera ici.",
-    "floating.return": "Ramener Shape Lab ici",
-    "float.open": "Afficher Shape Lab au-dessus des autres onglets",
+    "floating.return": "Ramener Geometric Solids ici",
+    "float.open": "Afficher Geometric Solids au-dessus des autres onglets",
     "float.unsupported":
       "Ce navigateur ne prend pas en charge les fenêtres flottantes",
     "float.failed": "Impossible d’ouvrir la fenêtre flottante.",
@@ -450,19 +450,19 @@ const fr = {
     "common.builtBy": "Créé par teacher.dev",
     "common.about": "à propos",
     "common.privacy": "confidentialité",
-    "common.back": "← Retour au laboratoire",
+    "common.back": "← Retour à l’interactif",
     "solid.description":
       "{name} avec {dimensions} {unit}. Faites glisser ou utilisez les flèches pour le faire pivoter. Pointez une face ou une arête pour la mesurer.",
     "net.description": "Patron plan de {name}",
     "grid.key": "Chaque carré du quadrillage mesure {size} {unit}",
-    "about.pageTitle": "À propos — Shape Lab",
+    "about.pageTitle": "À propos — Geometric Solids",
     "about.meta":
-      "Shape Lab est un outil pédagogique gratuit et sans publicité pour enseigner l’aire et le volume, créé par teacher.dev.",
+      "Geometric Solids est un outil pédagogique gratuit et sans publicité pour enseigner l’aire et le volume, créé par teacher.dev.",
     "about.title": "À propos",
     "about.lede":
       "Une démonstration guidée par l’enseignant du lien entre les dimensions d’un solide, son aire et son volume.",
     "about.originTitle": "Issu de l’EdTech-a-thon",
-    "about.origin.beforeEvent": "Shape Lab est né lors de l’",
+    "about.origin.beforeEvent": "Geometric Solids est né lors de l’",
     "about.origin.afterEvent":
       ", une communauté de créateurs qui conçoivent des outils gratuits pour les classes. Il est maintenu par ",
     "about.origin.afterTeacher": ", où vous trouverez nos autres créations.",
@@ -478,16 +478,16 @@ const fr = {
     "about.feedback":
       "Nous serions ravis de vous lire. Dites-nous ce qui fonctionne ou non, ou proposez-nous une idée d’outil que vous aimeriez voir exister. Nous sommes là pour vous aider.",
     "about.email": "Écrire à support@teacher.dev",
-    "privacy.pageTitle": "Confidentialité — Shape Lab",
+    "privacy.pageTitle": "Confidentialité — Geometric Solids",
     "privacy.meta":
-      "Ce que Shape Lab collecte, ce qu’il ne collecte pas et pourquoi.",
+      "Ce que Geometric Solids collecte, ce qu’il ne collecte pas et pourquoi.",
     "privacy.title": "Confidentialité",
     "privacy.lede":
       "Ce que nous collectons, ce que nous ne collectons pas et pourquoi.",
     "privacy.local":
-      "Shape Lab ne collecte aucune information personnelle sur les enseignants ou les élèves. Il n’y a pas de compte, et rien de ce que vous saisissez — dimensions, unités ou solide choisi — n’est envoyé ni enregistré. Tout reste dans la page tant que l’onglet est ouvert et disparaît lorsque vous le fermez.",
+      "Geometric Solids ne collecte aucune information personnelle sur les enseignants ou les élèves. Il n’y a pas de compte, et rien de ce que vous saisissez — dimensions, unités ou solide choisi — n’est envoyé ni enregistré. Tout reste dans la page tant que l’onglet est ouvert et disparaît lorsque vous le fermez.",
     "privacy.analytics.beforeLink":
-      "Nous utilisons Cloudflare Web Analytics pour compter anonymement les visites, ce qui nous aide à comprendre comment Shape Lab est utilisé en classe. Cloudflare Web Analytics n’utilise pas de cookies, ne crée pas d’empreinte des visiteurs et ne les suit pas sur d’autres sites ; consultez la ",
+      "Nous utilisons Cloudflare Web Analytics pour compter anonymement les visites, ce qui nous aide à comprendre comment Geometric Solids est utilisé en classe. Cloudflare Web Analytics n’utilise pas de cookies, ne crée pas d’empreinte des visiteurs et ne les suit pas sur d’autres sites ; consultez la ",
     "privacy.analytics.link": "politique de confidentialité",
     "privacy.analytics.afterLink":
       " de Cloudflare pour en savoir plus. Nous ne partageons, ne vendons ni ne transférons d’aucune autre manière les données des visiteurs à des tiers.",

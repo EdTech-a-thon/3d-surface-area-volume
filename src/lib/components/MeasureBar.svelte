@@ -40,6 +40,16 @@
    * the shape needs the room more than they do.
    */
   const stepClass = $derived(compact ? `${step} max-[30rem]:hidden` : step);
+  /**
+   * The working for a derived length — "s = √(4² + (6/2)²) = 5" — goes at the
+   * same point, and for the same reason. It is the longest line in the panel
+   * and the only one that explains rather than sets anything, so a window with
+   * no room for the nudge buttons has none for it either. It also goes when the
+   * window is too short, where every row costs the shape more than it is worth.
+   */
+  const derivedClass = $derived(
+    compact ? " max-[30rem]:hidden [@media(max-height:26rem)]:hidden" : "",
+  );
 </script>
 
 <!-- The dimensions are always on screen: they are what the whole demonstration
@@ -163,9 +173,7 @@
     {@const value = evalExact(derived.exact)}
     {@const exact = formatExact(derived.exact)}
     <p
-      class="mt-1.5 border-t border-rule/60 pt-1.5 font-mono text-xs text-ink-soft {compact
-        ? '[@media(max-height:26rem)]:hidden'
-        : ''}"
+      class="mt-1.5 border-t border-rule/60 pt-1.5 font-mono text-xs break-words text-ink-soft{derivedClass}"
       data-testid="derived-{derived.key}"
     >
       <!-- "l = w = h = 2" already ends in its own value; "s = √(3² + 4²)" does not. -->

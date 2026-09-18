@@ -85,9 +85,23 @@ export function gridLayers(
   base: number,
   fade: number,
 ): { coarse: number; fine: number } {
-  const fine = base * fade;
+  const fine = base * fade ** HOLD_BACK;
   return { coarse: (base - fine) / (1 - fine), fine };
 }
+
+/**
+ * How much the finer ruling is held back on its way in.
+ *
+ * It has to arrive at full strength exactly at the hand-over — a step past that
+ * it *is* the ruling, and anything less than full strength there would be a
+ * jump — but it need not get there evenly. Fading it in straight makes the
+ * sub-lines nearly as dark as the lines they divide for most of the range, and
+ * then a square is just a square: there is no telling which of them is the one
+ * the key names. Holding them back keeps that reading obvious over almost the
+ * whole range, at the cost of the last stretch before the hand-over, where the
+ * two rulings are about to swap roles anyway.
+ */
+const HOLD_BACK = 3;
 
 /**
  * How much of the available room a shape of this size should fill.

@@ -9,7 +9,7 @@
 
   let picker: HTMLLabelElement;
 
-  // Shape Lab can live in a Picture-in-Picture document as well as the main
+  // Geometric Solids can live in a Picture-in-Picture document as well as the main
   // page, so update the document that actually owns this picker.
   $effect(() => {
     if (picker) picker.ownerDocument.documentElement.lang = current().locale;

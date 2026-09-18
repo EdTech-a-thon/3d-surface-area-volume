@@ -1,4 +1,4 @@
-# Shape Lab — product requirements
+# Geometric Solids — product requirements
 
 Status: implemented. This document remains the specification of record; see
 [Current implementation state](#current-implementation-state).
@@ -40,7 +40,7 @@ These are implementation recommendations, not separately confirmed requirements.
 - Surface highlighting works through labeled controls, not only hover or color.
 - Use a desktop/projector-first layout that remains usable on tablets and narrow screens.
 - No accounts, student data, backend, saved lessons, quizzes, or sharing workflows.
-- Working name: Shape Lab.
+- Name: Geometric Solids, at geometricsolids.org.
 
 ## Essential interactions
 

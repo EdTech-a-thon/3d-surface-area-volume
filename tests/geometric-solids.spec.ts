@@ -360,6 +360,8 @@ test("folds its controls down to fit the floating window", async ({
   await expect(floatingPage.getByTestId("shape-picker")).toBeVisible();
   await expect(floatingPage.getByTestId("shape-cube")).toHaveCount(0);
   await expect(floatingPage.getByTestId("brand-toggle")).toHaveCount(0);
+  // The language belongs to the page it came from, not to the pane.
+  await expect(floatingPage.getByTestId("language-picker")).toHaveCount(0);
 
   // The list behind it is the same icons, and no names: the drawing of a cone
   // says what "cone" would, in less room.
@@ -410,6 +412,7 @@ test("folds its controls down to fit the floating window", async ({
   await expect(page.getByTestId("shape-cone")).toBeVisible();
   await expect(page.getByTestId("rotate-left")).toBeVisible();
   await expect(page.getByTestId("surface-total")).toContainText("square units");
+  await expect(page.getByTestId("language-picker")).toBeVisible();
 });
 
 test("keeps the view controls level with the panels for as long as they fit", async ({
@@ -464,6 +467,73 @@ test("keeps the view controls level with the panels for as long as they fit", as
   expect(Math.abs(stacked.x + stacked.width / 2 - 320 / 2)).toBeLessThan(
     320 * 0.1,
   );
+});
+
+test("keeps long working inside its panel in a floating window", async ({
+  page,
+  context,
+}) => {
+  const floatingPagePromise = context.waitForEvent("page");
+  await page.getByTestId("toggle-float").click();
+  const floatingPage = await floatingPagePromise;
+  await floatingPage.getByTestId("solid-view").waitFor();
+  await floatingPage.setViewportSize({ width: 520, height: 440 });
+
+  const inside = async (
+    panel: ReturnType<typeof floatingPage.getByLabel>,
+    content: ReturnType<typeof floatingPage.getByLabel>,
+  ) => {
+    const outer = (await panel.boundingBox())!;
+    const inner = (await content.boundingBox())!;
+    return {
+      right: outer.x + outer.width - (inner.x + inner.width),
+      bottom: outer.y + outer.height - (inner.y + inner.height),
+    };
+  };
+
+  // A pyramid's slant height is the longest thing the dimensions panel ever
+  // says: "s = √(4² + (6/2)²) = 5". The panel keeps it, rather than running it
+  // out through its own edge, where the panel's scrolling would cut it off.
+  await floatingPage.getByTestId("shape-picker").click();
+  await floatingPage.getByTestId("shape-squarePyramid").click();
+  const derived = await inside(
+    floatingPage.getByLabel(/Dimensions/),
+    floatingPage.getByTestId("derived-s"),
+  );
+  expect(derived.right).toBeGreaterThanOrEqual(0);
+  expect(derived.bottom).toBeGreaterThanOrEqual(0);
+
+  // Same for the formulas, which otherwise push the buttons beside them out
+  // through the right-hand edge of the totals card.
+  await floatingPage.getByTestId("shape-picker").click();
+  await floatingPage.getByTestId("shape-sphere").click();
+  await floatingPage.getByTestId("toggle-formulas").click();
+  const totals = floatingPage.getByLabel("Totals");
+  for (const testid of ["surface-substitution", "volume-substitution"]) {
+    const working = await inside(totals, floatingPage.getByTestId(testid));
+    expect(working.right).toBeGreaterThanOrEqual(0);
+    expect(working.bottom).toBeGreaterThanOrEqual(0);
+  }
+  const buttons = await inside(
+    totals,
+    floatingPage.getByTestId("toggle-formulas"),
+  );
+  expect(buttons.right).toBeGreaterThanOrEqual(0);
+  expect(buttons.bottom).toBeGreaterThanOrEqual(0);
+
+  // And the card keeps to its half of a small window: the rounded reading goes
+  // under the exact answer there rather than trailing after it.
+  const card = (await totals.boundingBox())!;
+  expect(card.width).toBeLessThan(520 * 0.55);
+
+  // Narrower still, and the working goes altogether, along with the nudge
+  // buttons it keeps company with: what is left is the dimensions themselves.
+  await floatingPage.setViewportSize({ width: 400, height: 440 });
+  await floatingPage.getByTestId("shape-picker").click();
+  await floatingPage.getByTestId("shape-squarePyramid").click();
+  await expect(floatingPage.getByTestId("decrease-b")).toBeHidden();
+  await expect(floatingPage.getByTestId("derived-s")).toBeHidden();
+  await expect(floatingPage.getByTestId("input-b")).toBeVisible();
 });
 
 test("keeps the labels on the shape when the floating window is resized", async ({

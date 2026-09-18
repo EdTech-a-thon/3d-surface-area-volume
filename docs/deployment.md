@@ -1,5 +1,7 @@
 # Deployment
 
+The production site is https://geometricsolids.org.
+
 The app is a fully prerendered static site (`@sveltejs/adapter-static`), so all
 configuration is read at **build time** and baked into the generated HTML.
 

@@ -36,6 +36,15 @@ describe("gridScale", () => {
     }
   });
 
+  it("holds the finer ruling well under the one it divides", () => {
+    // Otherwise every square looks like every other square, and there is no
+    // reading off which of them is the one the key to the grid names.
+    const ink = gridLayers(0.55, 0.75);
+    expect(ink.fine).toBeLessThan(0.55 * 0.5);
+    // Still composited to exactly the ink the coarse ruling is asked for.
+    expect(1 - (1 - ink.coarse) * (1 - ink.fine)).toBeCloseTo(0.55, 10);
+  });
+
   it("hands over to the finer step without the marks ever jumping", () => {
     // Walk a zoom-in continuously and watch what is actually drawn: the two
     // lattices and their inks. Nothing may move by a visible amount in one

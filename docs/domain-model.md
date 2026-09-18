@@ -1,4 +1,4 @@
-# Shape Lab — domain model
+# Geometric Solids — domain model
 
 Status: proposed model based on confirmed discovery choices. No application implementation yet.
 

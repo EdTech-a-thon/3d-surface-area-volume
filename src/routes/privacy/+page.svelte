@@ -27,7 +27,7 @@
     </p>
     <p class="mt-4 leading-relaxed text-ink-soft">
       {t("privacy.contact")}<a
-        href="mailto:support@teacher.dev?subject=Shape%20Lab%20privacy"
+        href="mailto:support@teacher.dev?subject=Geometric%20Solids%20privacy"
         class={link}>support@teacher.dev</a
       >.
     </p>

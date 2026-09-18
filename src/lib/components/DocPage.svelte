@@ -28,7 +28,7 @@
         class="flex items-center gap-2 text-lg font-bold tracking-tight transition hover:text-accent"
       >
         <img src={asset("/edtechathon-logo.svg")} alt="" class="h-7 w-7" />
-        Shape Lab
+        Geometric Solids
       </a>
       <div class="flex items-center gap-1.5">
         <a

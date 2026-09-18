@@ -198,8 +198,12 @@
        a masthead leads a page, and the picker keeps the width it had: three
        icons to a row on a phone, where the view controls opposite need the rest
        of the width; one row on a big screen. -->
+  <!-- Above the panels along the bottom edge, not level with them: what opens
+       from this corner — the picker's list of solids, the mark's credits — has
+       to cover them, and two rows at the same depth are settled by which one
+       the markup happens to reach last. -->
   <div
-    class="pointer-events-none absolute top-2 left-2 z-20 flex items-start gap-1.5"
+    class="pointer-events-none absolute top-2 left-2 z-30 flex items-start gap-1.5"
   >
     {#if !floating}
       <BrandChip {lab} />
@@ -233,7 +237,9 @@
         <option value={key}>{unitLabels(key).linear}</option>
       {/each}
     </select>
-    <LanguagePicker />
+    {#if !floating}
+      <LanguagePicker />
+    {/if}
   </div>
 
   {#if floatError}
@@ -269,7 +275,7 @@
       bottomHeight = height;
     }}
   >
-    <div use:measureBox={(width) => (leftWidth = width)}>
+    <div class="min-w-0" use:measureBox={(width) => (leftWidth = width)}>
       <MeasureBar {lab} compact={floating} />
     </div>
     <div
